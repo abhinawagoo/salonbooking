@@ -44,30 +44,24 @@ Vercel is the easiest way to deploy Next.js applications.
 
 ### Step 3: Set Up Production Database
 
-#### Option A: Use Vercel Postgres (Recommended)
+The project uses **PostgreSQL** (see `prisma/schema.prisma`). Use one of:
+
+#### Option A: Neon (free, recommended)
+
+1. Create a project at **[neon.tech](https://neon.tech)** and copy the connection string.
+2. Set `DATABASE_URL` in Vercel environment variables to that string.
+3. See **MAKE_IT_LIVE.md** for the full flow.
+
+#### Option B: Vercel Postgres
 
 1. In Vercel dashboard, go to **Storage** → **Create Database** → **Postgres**
-2. Copy the connection string
-3. Update `DATABASE_URL` in environment variables
-4. Update `prisma/schema.prisma` to use PostgreSQL:
-   ```prisma
-   datasource db {
-     provider = "postgresql"
-     url      = env("DATABASE_URL")
-   }
-   ```
-5. Run migrations:
-   ```bash
-   npx prisma migrate deploy
-   ```
+2. Copy the connection string and set `DATABASE_URL` in environment variables.
 
-#### Option B: Use External PostgreSQL (Supabase, Railway, etc.)
+#### Option C: External PostgreSQL (Supabase, Railway, etc.)
 
-1. Create a PostgreSQL database on your preferred provider
-2. Get the connection string
-3. Update `DATABASE_URL` in environment variables
-4. Update schema to PostgreSQL (as above)
-5. Run migrations
+1. Create a PostgreSQL database on your preferred provider.
+2. Get the connection string and set `DATABASE_URL` in Vercel environment variables.
+3. Run schema and seed (see step 4 below).
 
 ### Step 4: Run Database Migrations
 

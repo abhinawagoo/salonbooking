@@ -1,8 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['localhost'],
-    unoptimized: true,
+    remotePatterns: [
+      { protocol: 'http', hostname: 'localhost', pathname: '/**' },
+    ],
+    unoptimized: true, // allows external URLs (e.g. R2) without listing each hostname
   },
 }
 
