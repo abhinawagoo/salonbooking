@@ -12,6 +12,7 @@ import {
   parseISO,
 } from 'date-fns'
 
+export const dynamic = 'force-dynamic'
 export type ReportPeriod = 'day' | 'week' | 'month' | 'year'
 
 function getDateRange(period: ReportPeriod, dateStr: string): { from: Date; to: Date } {

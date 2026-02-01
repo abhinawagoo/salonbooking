@@ -35,10 +35,10 @@ export function generateInvoicePDF(data: InvoiceData) {
   const margin = 20
   let yPos = margin
 
-  // Colors
-  const primaryColor = [0, 0, 0] // Black
-  const grayColor = [128, 128, 128]
-  const lightGrayColor = [240, 240, 240]
+  // Colors (tuple type for jsPDF setFillColor)
+  const primaryColor: [number, number, number] = [0, 0, 0] // Black
+  const grayColor: [number, number, number] = [128, 128, 128]
+  const lightGrayColor: [number, number, number] = [240, 240, 240]
 
   // Header: location image (if provided) + title
   const headerHeight = 52

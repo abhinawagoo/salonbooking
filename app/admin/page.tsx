@@ -133,7 +133,7 @@ export default function AdminDashboard() {
           {isLoading ? (
             <div className="p-6 text-center text-gray-500">Loading...</div>
           ) : services.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">No services found. Click "Add Service" to create one.</div>
+            <div className="p-6 text-center text-gray-500">No services found. Click &quot;Add Service&quot; to create one.</div>
           ) : (
             <div className="overflow-x-auto -mx-4 sm:mx-0">
               <table className="w-full min-w-[520px]">

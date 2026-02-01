@@ -281,7 +281,7 @@ export default function AdminBookingsPage() {
             <div className="text-2xl font-bold text-gray-900">{bookings.length}</div>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-sm text-gray-600 mb-1">Today's Bookings</div>
+            <div className="text-sm text-gray-600 mb-1">Today&apos;s Bookings</div>
             <div className="text-2xl font-bold text-primary-600">
               {bookings.filter(b => isToday(new Date(b.date))).length}
             </div>

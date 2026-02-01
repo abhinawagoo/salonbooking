@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { format, startOfDay, endOfDay } from 'date-fns'
 import { getSlotsInRange } from '@/lib/slots'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)

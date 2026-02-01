@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Download, Calendar, CreditCard, FileText, MapPin } from 'lucide-react'
 import { format } from 'date-fns'
@@ -12,7 +12,7 @@ interface Service {
   price: number
 }
 
-export default function InvoicePage() {
+function InvoicePageContent() {
   const searchParams = useSearchParams()
   const [bookingData, setBookingData] = useState<{
     token: string
@@ -206,5 +206,20 @@ export default function InvoicePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function InvoicePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto" />
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <InvoicePageContent />
+    </Suspense>
   )
 }

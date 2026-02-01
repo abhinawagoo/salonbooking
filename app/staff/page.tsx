@@ -325,7 +325,7 @@ export default function StaffDashboard() {
         <div className="max-w-7xl mx-auto px-4 py-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Staff Dashboard</h1>
-            <p className="text-gray-600 mt-1">View and manage today's appointments</p>
+            <p className="text-gray-600 mt-1">View and manage today&apos;s appointments</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
@@ -356,7 +356,7 @@ export default function StaffDashboard() {
         <div className="mb-8">
           <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
             <Clock className="text-primary-600" size={24} />
-            Today's Appointments ({todayBookings.length})
+            Today&apos;s Appointments ({todayBookings.length})
           </h2>
           {isLoading ? (
             <div className="text-center py-8 text-gray-500">Loading...</div>
