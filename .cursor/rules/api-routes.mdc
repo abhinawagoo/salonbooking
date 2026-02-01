@@ -1,0 +1,28 @@
+---
+description: API route conventions and patterns
+globs: app/api/**/*.ts
+alwaysApply: false
+---
+
+# API Route Conventions
+
+## Structure
+- One HTTP method per export: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`.
+- File: `app/api/[segment]/route.ts` or `app/api/[segment]/[id]/route.ts`.
+- Use `NextResponse.json()` for JSON; return `{ error: 'message' }` and appropriate status (400, 404, 500).
+
+## Patterns
+- **Prisma**: Import from `@/lib/prisma`. Use try/catch; log and return 500 on error.
+- **Query params**: `const { searchParams } = new URL(request.url)` then `searchParams.get('key')`.
+- **Body**: `await request.json()` for POST/PUT/PATCH; validate required fields and return 400 if missing.
+- **Ids**: For dynamic routes use `params.id` (sync: `{ params }: { params: { id: string } }`).
+
+## Location-Aware Endpoints
+- Bookings and reports filter by `locationId` when provided.
+- Slots: `GET /api/slots/availability?locationId=...&startDate=...&endDate=...`.
+- Admin bookings: `GET /api/admin/bookings?locationId=...`.
+- Reports: `GET /api/admin/reports?locationId=...&period=day|week|month|year&date=YYYY-MM-DD`.
+
+## Upload
+- `POST /api/admin/upload`: formData with `file` and `type` (service | hero | gallery). Hero: MP4 only; service/gallery: images. Returns `{ url }`.
+- `POST /api/admin/upload/delete`: body `{ url }`; deletes from R2 when URL is R2 bucket (no-op for local uploads).

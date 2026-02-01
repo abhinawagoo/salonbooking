@@ -1,0 +1,145 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  mobile    String   @unique
+  role      String   @default("CUSTOMER") // CUSTOMER, STAFF, ADMIN
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  bookings Booking[]
+}
+
+model Category {
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  description  String?
+  imageUrl     String?
+  order        Int           @default(0)
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  subcategories SubCategory[]
+  services      Service[]
+}
+
+model SubCategory {
+  id          String    @id @default(cuid())
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String?
+  order       Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  services Service[]
+  
+  @@unique([categoryId, slug])
+}
+
+model Service {
+  id             String       @id @default(cuid())
+  categoryId     String?
+  category       Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  subCategoryId  String?
+  subCategory    SubCategory? @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
+  name           String
+  description String?
+  price       Float
+  duration    Int      // in minutes
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  bookingServices BookingService[]
+}
+
+model Location {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  address   String?
+  mobile    String?   // Contact number for this location (shown on bill)
+  imageUrl  String?   // Image for this location (shown on bill)
+  isActive  Boolean   @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  bookings Booking[]
+}
+
+model Booking {
+  id              String    @id @default(cuid())
+  locationId      String?   // Required for new bookings; null for legacy
+  location        Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  date            DateTime
+  timeSlot        String   // e.g., "10:00", "11:00"
+  durationMinutes Int      @default(30) // Total service duration at booking time (blocks slots until start + duration)
+  status          String   @default("BOOKED") // BOOKED, COMPLETED, CANCELLED
+  notes           String?
+  token           String   @unique // Booking confirmation token
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  services BookingService[]
+  payment  Payment?
+}
+
+model BookingService {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id])
+  price     Float    // Price at time of booking
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([bookingId, serviceId])
+}
+
+model Payment {
+  id               String   @id @default(cuid())
+  bookingId        String   @unique
+  booking          Booking  @relation(fields: [bookingId], references: [id])
+  amount           Float    // Initial payment amount (advance or full) requested
+  totalAmount      Float    @default(0) // Total booking value (sum of services)
+  amountPaid       Float    @default(0)  // Total paid so far (online + cash)
+  onlineAmount     Float    @default(0)  // Paid via gateway
+  cashAmount       Float    @default(0)  // Paid at salon by cash
+  paymentType      String   // FULL, ADVANCE
+  paymentStatus    String   @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
+  gatewayReference String?  // PhonePe transaction ID
+  gatewayResponse  String?  // Full gateway response JSON
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// Singleton: one row (id=1). Admin customizations: brand name, menu label, hero videos, gallery images.
+model SiteCustomization {
+  id                Int      @id @default(1)
+  brandName         String   @default("Salon")
+  menuLabel         String   @default("Services")
+  heroVideoUrls     String?  // JSON array of URL strings (max 5)
+  galleryImageUrls  String?  // JSON array of URL strings (max 5)
+  updatedAt         DateTime @updatedAt
+}

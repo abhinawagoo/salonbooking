@@ -1,0 +1,21 @@
+---
+description: Shared components and UI conventions
+globs: components/**/*.tsx
+alwaysApply: false
+---
+
+# Components
+
+## Shared Components
+- **ServiceCard**: id, name, description, price, imageUrl, duration, onAdd, **isSelected** (optional). When isSelected, show “Already selected” and disable add; green border/background.
+- **ServiceModal**: service, isOpen, onClose, onAdd, **isSelected** (optional). When isSelected, show “Already selected” instead of “Add to Booking”.
+- **CartBar**: itemCount, totalPrice, onContinue. Use `type="button"` on buttons.
+- **CustomerForm**: onSubmit(data: { name, mobile, notes? }).
+- **DateTimePicker**: onSelect(date, timeSlot), slotCounts, durationMinutes.
+- **PaymentScreen**, **ConfirmationScreen**: receive booking/payment props; ConfirmationScreen can take locationName, locationAddress, locationMobile, locationImageUrl for invoice.
+- **Navigation**: hides on `/booking/*`; shows Home, Book Appointment (/booking/location), Staff, Admin by role.
+
+## Conventions
+- Use Tailwind; avoid inline styles. Prefer min-h-[44px] for touch targets.
+- Images: use placeholder until load (PLACEHOLDER_IMAGE from lib/placeholders) to avoid blank flash; handle onError fallback.
+- Don’t mention “R2” or storage backend in user-facing text.

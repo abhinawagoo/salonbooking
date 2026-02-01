@@ -1,0 +1,31 @@
+---
+description: Next.js app pages and booking flow conventions
+globs: app/**/*.tsx
+alwaysApply: false
+---
+
+# Next.js Pages & Booking Flow
+
+## App Router
+- Pages live in `app/**/page.tsx`. Layouts in `layout.tsx`.
+- Client components: add `'use client'` at top when using useState, useEffect, or event handlers.
+- Navigation: `useRouter()` from `next/navigation`; `router.push(path)`.
+
+## Booking Flow (Order)
+1. `app/booking/location/page.tsx` – Choose location; store in sessionStorage as `bookingLocation`.
+2. `app/booking/date-time/page.tsx` – Requires `bookingLocation`; fetches slots by locationId; stores `bookingDateTime`.
+3. `app/booking/customer/page.tsx` – Requires location + dateTime; stores `customerDetails`.
+4. `app/booking/services/page.tsx` – Requires location, dateTime, customer; can preload `selectedServices` from sessionStorage; stores for payment.
+5. `app/booking/payment/page.tsx` – Creates booking via POST `/api/booking` with locationId and services; then redirects to confirmation.
+Redirect to `/booking/location` if required sessionStorage keys are missing.
+
+## Admin
+- Dashboard: `app/admin/page.tsx`. Sub-routes: bookings, reports, customize, locations, categories.
+- Customize: hero videos (max 5, MP4, max 30s), gallery images, locations link. No UI text about “R2” or storage.
+- Locations: max 2; edit name, address, mobile, imageUrl. Back link goes to `/admin/customize`.
+- Reports: location filter, period (day/week/month/year), date; shows summary and bookings list.
+
+## Conventions
+- Use Tailwind; prefer responsive classes (`sm:`, `md:`). Touch targets min 44px where possible.
+- ServiceCard: accept `isSelected` to show “Already selected” and disable add.
+- Images: use placeholder until load (e.g. `lib/placeholders.ts`) to avoid blank flash.

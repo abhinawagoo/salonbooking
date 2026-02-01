@@ -1,0 +1,35 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+
+/** PATCH: Update location name and address (slug left unchanged) */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params
+    const body = await request.json()
+    const name = (body.name ?? '').toString().trim()
+    const address = body.address !== undefined ? (body.address ?? '').toString().trim() || null : undefined
+    const mobile = body.mobile !== undefined ? (body.mobile ?? '').toString().trim() || null : undefined
+    const imageUrl = body.imageUrl !== undefined ? (body.imageUrl ?? '').toString().trim() || null : undefined
+
+    const updateData: { name?: string; address?: string | null; mobile?: string | null; imageUrl?: string | null } = {}
+    if (name) updateData.name = name
+    if (address !== undefined) updateData.address = address
+    if (mobile !== undefined) updateData.mobile = mobile
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl
+
+    const location = await prisma.location.update({
+      where: { id },
+      data: updateData,
+    })
+    return NextResponse.json(location)
+  } catch (error) {
+    console.error('Error updating location:', error)
+    return NextResponse.json(
+      { error: 'Failed to update location' },
+      { status: 500 }
+    )
+  }
+}

@@ -1,0 +1,119 @@
+const { PrismaClient } = require('@prisma/client')
+
+const prisma = new PrismaClient()
+
+async function main() {
+  console.log('Seeding database...')
+
+  // Two salon locations
+  const locationsData = [
+    { name: 'Salon Downtown', slug: 'downtown', address: '123 Main St, Downtown' },
+    { name: 'Salon Mall', slug: 'mall', address: 'Mall of City, Level 2' },
+  ]
+  for (const loc of locationsData) {
+    await prisma.location.upsert({
+      where: { slug: loc.slug },
+      update: { name: loc.name, address: loc.address },
+      create: loc,
+    })
+  }
+
+  // Premium salon: standard categories (domain) and subcategories
+  const categoriesData = [
+    { name: 'Standard', slug: 'standard', order: 0, description: 'Standard services and basics' },
+    { name: 'Hair', slug: 'hair', order: 1, description: 'Hair cut, straightening, hair colour, spa & more' },
+    { name: 'Massage', slug: 'massage', order: 2, description: 'Head massage, body massage, foot massage & more' },
+    { name: 'Nails', slug: 'nails', order: 3, description: 'Manicure, pedicure, nail art & more' },
+    { name: 'Skin & Beauty', slug: 'skin-beauty', order: 4, description: 'Facial, threading, waxing, bleach & more' },
+    { name: 'Bridal & Makeup', slug: 'bridal-makeup', order: 5, description: 'Bridal makeup, party makeup & more' },
+  ]
+
+  for (const cat of categoriesData) {
+    await prisma.category.upsert({
+      where: { slug: cat.slug },
+      update: { name: cat.name, order: cat.order, description: cat.description },
+      create: cat,
+    })
+  }
+
+  const cats = await prisma.category.findMany({ orderBy: { order: 'asc' } })
+  const standardId = cats.find((c) => c.slug === 'standard').id
+  const hairId = cats.find((c) => c.slug === 'hair').id
+  const massageId = cats.find((c) => c.slug === 'massage').id
+  const nailsId = cats.find((c) => c.slug === 'nails').id
+  const skinId = cats.find((c) => c.slug === 'skin-beauty').id
+  const bridalId = cats.find((c) => c.slug === 'bridal-makeup').id
+
+  // Subcategories: one under Standard for premium salon
+  await prisma.subCategory.upsert({
+    where: { categoryId_slug: { categoryId: standardId, slug: 'basic' } },
+    update: { name: 'Basic', order: 0, description: 'Basic services' },
+    create: { categoryId: standardId, name: 'Basic', slug: 'basic', order: 0, description: 'Basic services' },
+  })
+  const basicSubId = (await prisma.subCategory.findFirst({ where: { categoryId: standardId, slug: 'basic' } })).id
+
+  const services = [
+    // Standard > Basic
+    { name: 'Consultation', description: 'Quick consultation and advice', price: 0, duration: 15, categoryId: standardId, subCategoryId: basicSubId, imageUrl: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=400' },
+    // Hair
+    { name: 'Haircut', description: 'Professional haircut and styling', price: 600, duration: 30, categoryId: hairId, imageUrl: 'https://images.unsplash.com/photo-1560869713-7d0a2b17c75a?w=400' },
+    { name: 'Hair Colour', description: 'Full hair coloring service', price: 2800, duration: 120, categoryId: hairId, imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400' },
+    { name: 'Straightening', description: 'Hair straightening treatment', price: 3500, duration: 90, categoryId: hairId, imageUrl: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a13737?w=400' },
+    { name: 'Hair Spa', description: 'Relaxing hair spa treatment', price: 1800, duration: 60, categoryId: hairId, imageUrl: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a13737?w=400' },
+    { name: 'Keratin Treatment', description: 'Smoothing keratin treatment', price: 4500, duration: 120, categoryId: hairId, imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400' },
+    { name: 'Blow Dry & Styling', description: 'Blow dry and styling', price: 800, duration: 45, categoryId: hairId, imageUrl: 'https://images.unsplash.com/photo-1560869713-7d0a2b17c75a?w=400' },
+    // Massage
+    { name: 'Head Massage', description: 'Relaxing head and scalp massage', price: 900, duration: 30, categoryId: massageId, imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
+    { name: 'Body Massage', description: 'Full body relaxation massage', price: 2200, duration: 60, categoryId: massageId, imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
+    { name: 'Foot Massage', description: 'Reflexology foot massage', price: 700, duration: 30, categoryId: massageId, imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
+    { name: 'Aromatherapy Massage', description: 'Aromatherapy body massage', price: 2500, duration: 60, categoryId: massageId, imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
+    // Nails
+    { name: 'Manicure', description: 'Nail care and polish', price: 650, duration: 30, categoryId: nailsId, imageUrl: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400' },
+    { name: 'Pedicure', description: 'Foot care and nail polish', price: 900, duration: 45, categoryId: nailsId, imageUrl: 'https://images.unsplash.com/photo-1604881991720-f91add269b7b?w=400' },
+    { name: 'Gel Nails', description: 'Gel manicure or pedicure', price: 1200, duration: 45, categoryId: nailsId, imageUrl: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400' },
+    { name: 'Nail Art', description: 'Custom nail art design', price: 800, duration: 45, categoryId: nailsId, imageUrl: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400' },
+    // Skin & Beauty
+    { name: 'Facial', description: 'Deep cleansing facial treatment', price: 1400, duration: 45, categoryId: skinId, imageUrl: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=400' },
+    { name: 'Threading', description: 'Eyebrow and facial threading', price: 350, duration: 15, categoryId: skinId, imageUrl: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a13737?w=400' },
+    { name: 'Waxing', description: 'Full body or partial waxing', price: 1100, duration: 60, categoryId: skinId, imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400' },
+    { name: 'Bleach', description: 'Face or body bleach', price: 600, duration: 30, categoryId: skinId, imageUrl: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=400' },
+    { name: 'Cleanup', description: 'Face cleanup and exfoliation', price: 900, duration: 30, categoryId: skinId, imageUrl: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=400' },
+    // Bridal & Makeup
+    { name: 'Bridal Makeup', description: 'Full bridal makeup package', price: 8000, duration: 120, categoryId: bridalId, imageUrl: 'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=400' },
+    { name: 'Party Makeup', description: 'Party or occasion makeup', price: 2500, duration: 60, categoryId: bridalId, imageUrl: 'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=400' },
+    { name: 'HD Makeup', description: 'HD makeup for events', price: 3500, duration: 75, categoryId: bridalId, imageUrl: 'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=400' },
+  ]
+
+  for (const s of services) {
+    const existing = await prisma.service.findFirst({ where: { name: s.name } })
+    const data = { name: s.name, categoryId: s.categoryId, subCategoryId: s.subCategoryId ?? null, description: s.description, price: s.price, duration: s.duration, imageUrl: s.imageUrl }
+    if (existing) {
+      await prisma.service.update({ where: { id: existing.id }, data })
+    } else {
+      await prisma.service.create({ data })
+    }
+  }
+
+  await prisma.user.upsert({
+    where: { mobile: '9999999999' },
+    update: {},
+    create: { name: 'Admin User', mobile: '9999999999', role: 'ADMIN' },
+  })
+
+  await prisma.user.upsert({
+    where: { mobile: '8888888888' },
+    update: {},
+    create: { name: 'Staff User', mobile: '8888888888', role: 'STAFF' },
+  })
+
+  console.log('Seeding completed!')
+}
+
+main()
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })

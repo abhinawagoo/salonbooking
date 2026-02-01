@@ -1,0 +1,23 @@
+---
+description: Prisma schema and DB conventions
+globs: prisma/**/*
+alwaysApply: false
+---
+
+# Prisma & Database
+
+## Schema
+- **Location**: SQLite (`provider = "sqlite"`). Use `prisma db push` for dev; migrations for production.
+- **Models**: User (role: CUSTOMER|STAFF|ADMIN), Category, SubCategory, Service, Location (max 2 in app logic), Booking (locationId optional for legacy), BookingService, Payment, SiteCustomization (singleton).
+
+## Conventions
+- **Don’t mix `include` and `select`** on the same relation (e.g. `services: { include: { service: { select: { name: true } } } }` only; no extra `select` on `services`).
+- Use `@relation` and foreign keys consistently; `onDelete: SetNull` or `Cascade` as appropriate.
+- Optional relations: `locationId String?` and `location Location?` for Booking.
+
+## Client
+- Single instance in `lib/prisma.ts`; import `prisma` from there in API routes.
+- After schema change: `npx prisma generate` (and `db push` or migrate).
+
+## Seed
+- `node prisma/seed.js` – creates 2 locations, categories, services, admin/staff users. Run after `db push` when needed.

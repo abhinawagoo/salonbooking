@@ -1,0 +1,32 @@
+---
+description: Salon booking project architecture, stack, and folder map
+alwaysApply: true
+---
+
+# Project Architecture
+
+## Stack
+- **Framework**: Next.js 14 (App Router)
+- **DB**: SQLite via Prisma (dev); PostgreSQL for production
+- **UI**: React 18, Tailwind CSS, lucide-react
+- **Storage**: Cloudflare R2 (optional) for uploads; fallback `public/uploads/`
+- **Payment**: PhonePe gateway
+
+## Folder Map
+- `app/` – Routes: `page.tsx` = page; `app/api/*/route.ts` = API handler
+- `app/booking/` – Customer flow: location → date-time → customer → services → payment
+- `app/admin/` – Admin: dashboard, bookings, reports, customize, locations, categories
+- `app/staff/` – Staff: today’s bookings, location filter
+- `components/` – Shared UI (ServiceCard, ServiceModal, CartBar, etc.)
+- `lib/` – prisma, auth, r2, generateInvoice, placeholders, slots, notify
+- `prisma/` – schema.prisma, seed.js
+
+## Key Flows
+1. **Booking**: Location → Date/Time (slots by locationId) → Customer → Services → Payment; sessionStorage holds bookingLocation, bookingDateTime, customerDetails, selectedServices.
+2. **Admin**: Services CRUD, locations (max 2), customize (brand, hero videos max 5 MP4, gallery), reports (day/week/month/year by location).
+3. **Uploads**: POST `/api/admin/upload` with `type`: service | hero | gallery; delete via POST `/api/admin/upload/delete` with `{ url }` (R2 only).
+
+## Conventions
+- Use `'use client'` only when needed (state, events). API routes and server code stay server-side.
+- Params in route handlers: `{ params }: { params: { id: string } }` (sync, not Promise).
+- Don’t mix Prisma `include` and `select` on the same relation.
