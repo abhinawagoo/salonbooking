@@ -2,29 +2,36 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Upload, X, Save, Image as ImageIcon, Video, MapPin, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Upload, X, Save, Image as ImageIcon, MapPin, ChevronRight } from 'lucide-react'
 import { setUserRole } from '@/lib/auth'
 
-const MAX_VIDEOS = 5
 const MAX_IMAGES = 5
 
 interface Settings {
   brandName: string
   menuLabel: string
+  heroBannerImageUrl: string | null
   heroVideoUrls: string[]
   galleryImageUrls: string[]
+  invoiceWebsite: string
+  invoiceUpiId: string
+  invoiceTerms: string
 }
 
 export default function AdminCustomizePage() {
   const [settings, setSettings] = useState<Settings>({
     brandName: 'Salon',
     menuLabel: 'Services',
+    heroBannerImageUrl: null,
     heroVideoUrls: [],
     galleryImageUrls: [],
+    invoiceWebsite: '',
+    invoiceUpiId: '',
+    invoiceTerms: '',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [uploadingVideo, setUploadingVideo] = useState(false)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
 
   useEffect(() => {
@@ -39,8 +46,12 @@ export default function AdminCustomizePage() {
       setSettings({
         brandName: data.brandName ?? 'Salon',
         menuLabel: data.menuLabel ?? 'Services',
+        heroBannerImageUrl: data.heroBannerImageUrl ?? null,
         heroVideoUrls: Array.isArray(data.heroVideoUrls) ? data.heroVideoUrls : [],
         galleryImageUrls: Array.isArray(data.galleryImageUrls) ? data.galleryImageUrls : [],
+        invoiceWebsite: data.invoiceWebsite ?? '',
+        invoiceUpiId: data.invoiceUpiId ?? '',
+        invoiceTerms: data.invoiceTerms ?? '',
       })
     } catch {
       setSettings((s) => ({ ...s }))
@@ -67,71 +78,28 @@ export default function AdminCustomizePage() {
     }
   }
 
-  const checkVideoDuration = (file: File): Promise<number> =>
-    new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file)
-      const video = document.createElement('video')
-      video.preload = 'metadata'
-      video.onloadedmetadata = () => {
-        URL.revokeObjectURL(url)
-        resolve(video.duration)
-      }
-      video.onerror = () => {
-        URL.revokeObjectURL(url)
-        reject(new Error('Could not read video'))
-      }
-      video.src = url
-    })
-
-  const handleFileUpload = async (type: 'video' | 'image', e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const list = type === 'video' ? settings.heroVideoUrls : settings.galleryImageUrls
-    if (list.length >= (type === 'video' ? MAX_VIDEOS : MAX_IMAGES)) {
-      alert(`Maximum ${type === 'video' ? MAX_VIDEOS : MAX_IMAGES} ${type}s allowed.`)
-      return
-    }
-    if (type === 'video') {
-      try {
-        const duration = await checkVideoDuration(file)
-        if (duration > 30) {
-          alert('Video must be 30 seconds or shorter.')
-          e.target.value = ''
-          return
-        }
-      } catch {
-        alert('Could not read video. Try another file.')
-        e.target.value = ''
-        return
-      }
-      setUploadingVideo(true)
-    } else {
-      setUploadingImage(true)
-    }
+    setUploadingBanner(true)
     try {
       const formData = new FormData()
       formData.set('file', file)
-      formData.set('type', type === 'video' ? 'hero' : 'gallery')
+      formData.set('type', 'hero')
       const res = await fetch('/api/admin/upload', { method: 'POST', body: formData })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Upload failed')
-      const url = data.url || ''
-      if (type === 'video') {
-        setSettings((s) => ({ ...s, heroVideoUrls: [...s.heroVideoUrls, url].slice(0, MAX_VIDEOS) }))
-      } else {
-        setSettings((s) => ({ ...s, galleryImageUrls: [...s.galleryImageUrls, url].slice(0, MAX_IMAGES) }))
-      }
+      setSettings((s) => ({ ...s, heroBannerImageUrl: data.url || null }))
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Upload failed')
     } finally {
-      setUploadingVideo(false)
-      setUploadingImage(false)
+      setUploadingBanner(false)
       e.target.value = ''
     }
   }
 
-  const removeUrl = async (type: 'video' | 'image', index: number) => {
-    const url = type === 'video' ? settings.heroVideoUrls[index] : settings.galleryImageUrls[index]
+  const removeBanner = async () => {
+    const url = settings.heroBannerImageUrl
     if (url) {
       try {
         await fetch('/api/admin/upload/delete', {
@@ -142,10 +110,46 @@ export default function AdminCustomizePage() {
       } catch {
         // continue to remove from UI
       }
+      setSettings((s) => ({ ...s, heroBannerImageUrl: null }))
     }
-    if (type === 'video') {
-      setSettings((s) => ({ ...s, heroVideoUrls: s.heroVideoUrls.filter((_, i) => i !== index) }))
-    } else {
+  }
+
+  const handleFileUpload = async (type: 'image', e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (settings.galleryImageUrls.length >= MAX_IMAGES) {
+      alert(`Maximum ${MAX_IMAGES} images allowed.`)
+      return
+    }
+    setUploadingImage(true)
+    try {
+      const formData = new FormData()
+      formData.set('file', file)
+      formData.set('type', 'gallery')
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Upload failed')
+      setSettings((s) => ({ ...s, galleryImageUrls: [...s.galleryImageUrls, data.url || ''].slice(0, MAX_IMAGES) }))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploadingImage(false)
+      e.target.value = ''
+    }
+  }
+
+  const removeUrl = async (index: number) => {
+    const url = settings.galleryImageUrls[index]
+    if (url) {
+      try {
+        await fetch('/api/admin/upload/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+        })
+      } catch {
+        // continue to remove from UI
+      }
       setSettings((s) => ({ ...s, galleryImageUrls: s.galleryImageUrls.filter((_, i) => i !== index) }))
     }
   }
@@ -207,46 +211,101 @@ export default function AdminCustomizePage() {
             </div>
           </div>
 
-          {/* Hero Videos (max 5, MP4 only) */}
+          {/* Hero Banner (single image, 30% height on homepage) */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
-              <Video size={20} />
-              Hero Videos (up to {MAX_VIDEOS})
+              <ImageIcon size={20} />
+              Hero Banner
             </h2>
-            <p className="text-sm text-gray-500 mb-4">Shown in the hero banner. MP4 only, max 30 seconds.</p>
-            <div className="flex flex-wrap gap-4">
-              {settings.heroVideoUrls.map((url, i) => (
-                <div key={i} className="relative group flex flex-col">
-                  <div className="w-36 h-20 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
-                    <Video className="text-gray-500" size={24} />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1 truncate max-w-[144px]" title={url}>Video {i + 1}</p>
+            <p className="text-sm text-gray-500 mb-4">One image shown at the top of the homepage (30% of screen height). JPEG, PNG or WebP. Looks great on mobile.</p>
+            <div className="flex flex-wrap items-start gap-4">
+              {settings.heroBannerImageUrl ? (
+                <div className="relative group">
+                  <img
+                    src={settings.heroBannerImageUrl}
+                    alt="Hero banner preview"
+                    className="w-full max-w-sm h-24 sm:h-28 object-cover rounded-lg border border-gray-200"
+                  />
                   <button
                     type="button"
-                    onClick={() => removeUrl('video', i)}
+                    onClick={removeBanner}
                     className="absolute top-1 right-1 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow"
-                    title="Remove video"
+                    title="Remove banner"
                   >
                     <X size={14} />
                   </button>
                 </div>
-              ))}
-              {settings.heroVideoUrls.length < MAX_VIDEOS && (
-                <label className="w-36 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-primary-500 hover:bg-primary-50/50 transition-colors shrink-0">
+              ) : null}
+              {!settings.heroBannerImageUrl && (
+                <label className="w-40 h-24 sm:w-48 sm:h-28 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-primary-500 hover:bg-primary-50/50 transition-colors shrink-0">
                   <input
                     type="file"
-                    accept="video/mp4"
+                    accept="image/jpeg,image/png,image/webp"
                     className="hidden"
-                    onChange={(e) => handleFileUpload('video', e)}
-                    disabled={uploadingVideo}
+                    onChange={handleBannerUpload}
+                    disabled={uploadingBanner}
                   />
-                  {uploadingVideo ? (
+                  {uploadingBanner ? (
                     <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary-600 border-t-transparent" />
                   ) : (
                     <Upload size={24} className="text-gray-400" />
                   )}
                 </label>
               )}
+              {settings.heroBannerImageUrl && (
+                <label className="w-40 h-24 sm:w-48 sm:h-28 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-primary-500 hover:bg-primary-50/50 transition-colors shrink-0">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handleBannerUpload}
+                    disabled={uploadingBanner}
+                  />
+                  {uploadingBanner ? (
+                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary-600 border-t-transparent" />
+                  ) : (
+                    <span className="text-xs text-gray-500 text-center px-2">Replace</span>
+                  )}
+                </label>
+              )}
+            </div>
+          </div>
+
+          {/* Tax Invoice Settings */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Tax Invoice Settings</h2>
+            <p className="text-sm text-gray-500 mb-4">Shown on downloaded bills and invoices sent to customers.</p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                <input
+                  type="text"
+                  value={settings.invoiceWebsite}
+                  onChange={(e) => setSettings((s) => ({ ...s, invoiceWebsite: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="e.g. www.sasaramshahnazsalon.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">UPI ID (for payment QR)</label>
+                <input
+                  type="text"
+                  value={settings.invoiceUpiId}
+                  onChange={(e) => setSettings((s) => ({ ...s, invoiceUpiId: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="e.g. paytmqr5cm6g0@ptys"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Terms & Conditions</label>
+                <input
+                  type="text"
+                  value={settings.invoiceTerms}
+                  onChange={(e) => setSettings((s) => ({ ...s, invoiceTerms: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="e.g. Goods once sold will not be taken back or exchanged."
+                />
+              </div>
             </div>
           </div>
 
@@ -281,7 +340,7 @@ export default function AdminCustomizePage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => removeUrl('image', i)}
+                    onClick={() => removeUrl(i)}
                     className="absolute top-1 right-1 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow"
                     title="Remove photo"
                   >

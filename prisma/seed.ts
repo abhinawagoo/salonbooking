@@ -30,17 +30,56 @@ async function main() {
   const skinId = categories.find((c) => c.slug === 'skin-beauty')!.id
   const bridalId = categories.find((c) => c.slug === 'bridal-makeup')!.id
 
+  // Subcategories for Hair
+  const hairSubs = [
+    { name: 'Hair Colour', slug: 'hair-colour', order: 0, description: 'Colouring services', imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400' },
+    { name: 'Hair Wash', slug: 'hair-wash', order: 1, description: 'Wash & conditioning', imageUrl: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a13737?w=400' },
+    { name: 'Hair Curl', slug: 'hair-curl', order: 2, description: 'Curl & styling', imageUrl: 'https://images.unsplash.com/photo-1560869713-7d0a2b17c75a?w=400' },
+    { name: 'Hair Treatments', slug: 'hair-treatments', order: 3, description: 'Spa, keratin & more', imageUrl: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a13737?w=400' },
+  ]
+  const hairSubIds: Record<string, string> = {}
+  for (const sub of hairSubs) {
+    const s = await prisma.subCategory.upsert({
+      where: { categoryId_slug: { categoryId: hairId, slug: sub.slug } },
+      update: { name: sub.name, order: sub.order, description: sub.description, imageUrl: sub.imageUrl },
+      create: { categoryId: hairId, ...sub },
+    })
+    hairSubIds[sub.slug] = s.id
+  }
+
+  // Subcategories for Massage
+  const massageSubs = [
+    { name: 'Head Massage', slug: 'head-massage', order: 0, description: 'Head & scalp', imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
+    { name: 'Body Massage', slug: 'body-massage', order: 1, description: 'Full body', imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
+    { name: 'Foot Massage', slug: 'foot-massage', order: 2, description: 'Reflexology', imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
+  ]
+  const massageSubIds: Record<string, string> = {}
+  for (const sub of massageSubs) {
+    const s = await prisma.subCategory.upsert({
+      where: { categoryId_slug: { categoryId: massageId, slug: sub.slug } },
+      update: { name: sub.name, order: sub.order, description: sub.description, imageUrl: sub.imageUrl },
+      create: { categoryId: massageId, ...sub },
+    })
+    massageSubIds[sub.slug] = s.id
+  }
+
   const services = [
-    { name: 'Haircut', description: 'Professional haircut and styling', price: 600, duration: 30, categoryId: hairId, imageUrl: 'https://images.unsplash.com/photo-1560869713-7d0a2b17c75a?w=400' },
-    { name: 'Hair Colour', description: 'Full hair coloring service', price: 2800, duration: 120, categoryId: hairId, imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400' },
-    { name: 'Straightening', description: 'Hair straightening treatment', price: 3500, duration: 90, categoryId: hairId, imageUrl: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a13737?w=400' },
-    { name: 'Hair Spa', description: 'Relaxing hair spa treatment', price: 1800, duration: 60, categoryId: hairId, imageUrl: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a13737?w=400' },
-    { name: 'Keratin Treatment', description: 'Smoothing keratin treatment', price: 4500, duration: 120, categoryId: hairId, imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400' },
-    { name: 'Blow Dry & Styling', description: 'Blow dry and styling', price: 800, duration: 45, categoryId: hairId, imageUrl: 'https://images.unsplash.com/photo-1560869713-7d0a2b17c75a?w=400' },
-    { name: 'Head Massage', description: 'Relaxing head and scalp massage', price: 900, duration: 30, categoryId: massageId, imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
-    { name: 'Body Massage', description: 'Full body relaxation massage', price: 2200, duration: 60, categoryId: massageId, imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
-    { name: 'Foot Massage', description: 'Reflexology foot massage', price: 700, duration: 30, categoryId: massageId, imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
-    { name: 'Aromatherapy Massage', description: 'Aromatherapy body massage', price: 2500, duration: 60, categoryId: massageId, imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
+    // Hair - under subcategories
+    { name: 'Full Hair Colour', description: 'Full hair coloring service', price: 2800, duration: 120, categoryId: hairId, subCategoryId: hairSubIds['hair-colour'], imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400' },
+    { name: 'Root Touch-up', description: 'Root colour touch-up', price: 1200, duration: 60, categoryId: hairId, subCategoryId: hairSubIds['hair-colour'], imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400' },
+    { name: 'Highlights', description: 'Hair highlights', price: 3500, duration: 90, categoryId: hairId, subCategoryId: hairSubIds['hair-colour'], imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400' },
+    { name: 'Basic Hair Wash', description: 'Shampoo and conditioning', price: 400, duration: 20, categoryId: hairId, subCategoryId: hairSubIds['hair-wash'], imageUrl: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a13737?w=400' },
+    { name: 'Premium Hair Wash', description: 'Premium wash with massage', price: 800, duration: 30, categoryId: hairId, subCategoryId: hairSubIds['hair-wash'], imageUrl: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a13737?w=400' },
+    { name: 'Curl Setting', description: 'Curl setting treatment', price: 1500, duration: 60, categoryId: hairId, subCategoryId: hairSubIds['hair-curl'], imageUrl: 'https://images.unsplash.com/photo-1560869713-7d0a2b17c75a?w=400' },
+    { name: 'Blow Dry & Styling', description: 'Blow dry and styling', price: 800, duration: 45, categoryId: hairId, subCategoryId: hairSubIds['hair-curl'], imageUrl: 'https://images.unsplash.com/photo-1560869713-7d0a2b17c75a?w=400' },
+    { name: 'Haircut', description: 'Professional haircut and styling', price: 600, duration: 30, categoryId: hairId, subCategoryId: hairSubIds['hair-treatments'], imageUrl: 'https://images.unsplash.com/photo-1560869713-7d0a2b17c75a?w=400' },
+    { name: 'Hair Spa', description: 'Relaxing hair spa treatment', price: 1800, duration: 60, categoryId: hairId, subCategoryId: hairSubIds['hair-treatments'], imageUrl: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a13737?w=400' },
+    { name: 'Keratin Treatment', description: 'Smoothing keratin treatment', price: 4500, duration: 120, categoryId: hairId, subCategoryId: hairSubIds['hair-treatments'], imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400' },
+    { name: 'Straightening', description: 'Hair straightening treatment', price: 3500, duration: 90, categoryId: hairId, subCategoryId: hairSubIds['hair-treatments'], imageUrl: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a13737?w=400' },
+    { name: 'Head Massage', description: 'Relaxing head and scalp massage', price: 900, duration: 30, categoryId: massageId, subCategoryId: massageSubIds['head-massage'], imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
+    { name: 'Body Massage', description: 'Full body relaxation massage', price: 2200, duration: 60, categoryId: massageId, subCategoryId: massageSubIds['body-massage'], imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
+    { name: 'Foot Massage', description: 'Reflexology foot massage', price: 700, duration: 30, categoryId: massageId, subCategoryId: massageSubIds['foot-massage'], imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
+    { name: 'Aromatherapy Massage', description: 'Aromatherapy body massage', price: 2500, duration: 60, categoryId: massageId, subCategoryId: massageSubIds['body-massage'], imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
     { name: 'Manicure', description: 'Nail care and polish', price: 650, duration: 30, categoryId: nailsId, imageUrl: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400' },
     { name: 'Pedicure', description: 'Foot care and nail polish', price: 900, duration: 45, categoryId: nailsId, imageUrl: 'https://images.unsplash.com/photo-1604881991720-f91add269b7b?w=400' },
     { name: 'Gel Nails', description: 'Gel manicure or pedicure', price: 1200, duration: 45, categoryId: nailsId, imageUrl: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400' },
@@ -57,14 +96,22 @@ async function main() {
 
   for (const service of services) {
     const existing = await prisma.service.findFirst({ where: { name: service.name } })
+    const data = {
+      categoryId: service.categoryId,
+      subCategoryId: (service as { subCategoryId?: string }).subCategoryId ?? null,
+      description: service.description,
+      price: service.price,
+      duration: service.duration,
+      imageUrl: service.imageUrl,
+    }
     if (existing) {
       await prisma.service.update({
         where: { id: existing.id },
-        data: { categoryId: service.categoryId, description: service.description, price: service.price, duration: service.duration, imageUrl: service.imageUrl },
+        data,
       })
     } else {
       await prisma.service.create({
-        data: { name: service.name, description: service.description, price: service.price, duration: service.duration, categoryId: service.categoryId, imageUrl: service.imageUrl },
+        data: { name: service.name, ...data },
       })
     }
   }

@@ -94,10 +94,10 @@ export default function DateTimePicker({ onSelect, slotCounts = {}, durationMinu
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-4">Select Date</h3>
-        <div className="grid grid-cols-5 sm:grid-cols-7 gap-2">
+        <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Select Date</h3>
+        <div className="grid grid-cols-5 sm:grid-cols-7 gap-1.5 sm:gap-2">
           {availableDates.map((date) => {
             const isSelected = selectedDate && isSameDay(date, selectedDate)
             const isToday = isSameDay(date, new Date())
@@ -108,7 +108,7 @@ export default function DateTimePicker({ onSelect, slotCounts = {}, durationMinu
                 key={date.toISOString()}
                 onClick={() => handleDateSelect(date)}
                 disabled={isClosed}
-                className={`p-3 rounded-lg border-2 transition-colors min-h-[60px] ${
+                className={`p-2 sm:p-3 rounded-lg border-2 transition-colors min-h-[48px] sm:min-h-[60px] ${
                   isClosed
                     ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
                     : isSelected
@@ -130,8 +130,8 @@ export default function DateTimePicker({ onSelect, slotCounts = {}, durationMinu
 
       {selectedDate && !isDateClosed(selectedDate) && (
         <div>
-          <h3 className="text-lg font-semibold mb-4">Select Time</h3>
-          <div className="mb-4 flex items-center gap-4 text-sm text-gray-600">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Select Time</h3>
+          <div className="mb-3 sm:mb-4 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-green-100 border-2 border-green-500 rounded"></div>
               <span>Available</span>
@@ -149,7 +149,7 @@ export default function DateTimePicker({ onSelect, slotCounts = {}, durationMinu
               <span>Closed</span>
             </div>
           </div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
             {TIME_SLOTS.map((timeSlot) => {
               const status = getSlotStatus(selectedDate, timeSlot)
               const count = getSlotBookingCount(selectedDate, timeSlot)

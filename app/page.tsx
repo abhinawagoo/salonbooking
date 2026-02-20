@@ -1,13 +1,74 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import ServiceCard from '@/components/ServiceCard'
 import ServiceModal from '@/components/ServiceModal'
 import CartBar from '@/components/CartBar'
 import { useRouter } from 'next/navigation'
 import { setUserRole } from '@/lib/auth'
-import { ChevronRight, ChevronLeft, Play, ChevronDown } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { PLACEHOLDER_IMAGE } from '@/lib/placeholders'
+
+const HERO_VIDEO_URL = process.env.NEXT_PUBLIC_HERO_VIDEO_URL
+
+function HeroVideoCarousel({ urls }: { urls: string[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
+
+  const scrollToAndPlay = useCallback((index: number) => {
+    const video = videoRefs.current[index]
+    if (!video) return
+    videoRefs.current.forEach((v, i) => { if (v && i !== index) v.pause() })
+    const card = video.closest('[data-video-card]') as HTMLElement | null
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+    }
+    video.play().catch(() => {})
+  }, [])
+
+  const handleEnded = useCallback(
+    (index: number) => {
+      const next = (index + 1) % urls.length
+      scrollToAndPlay(next)
+    },
+    [urls.length, scrollToAndPlay]
+  )
+
+  useEffect(() => {
+    if (urls.length > 0) {
+      videoRefs.current[0]?.play().catch(() => {})
+    }
+  }, [urls.length])
+
+  return (
+    <div
+      ref={scrollRef}
+      className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 sm:pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory scroll-smooth"
+    >
+      {urls.map((url, i) => (
+        <div
+          key={i}
+          data-video-card
+          className="flex-shrink-0 w-[85vw] sm:w-[400px] snap-start rounded-xl overflow-hidden bg-gray-900 shadow-lg"
+        >
+          <video
+            ref={(el) => { videoRefs.current[i] = el }}
+            src={url}
+            muted
+            playsInline
+            autoPlay={i === 0}
+            loop={false}
+            onEnded={() => handleEnded(i)}
+            className="w-full aspect-video object-cover"
+            preload="auto"
+          >
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function GalleryImage({ url }: { url: string }) {
   const [loaded, setLoaded] = useState(false)
@@ -32,6 +93,17 @@ interface Service {
   duration: number
   imageUrl?: string
   categoryId?: string
+  subCategoryId?: string
+}
+
+interface SubCategory {
+  id: string
+  name: string
+  slug: string
+  description?: string
+  imageUrl?: string
+  order: number
+  services: Service[]
 }
 
 interface Category {
@@ -42,77 +114,34 @@ interface Category {
   imageUrl?: string
   order: number
   services: Service[]
+  subcategories?: SubCategory[]
 }
 
 interface SiteSettings {
   brandName: string
   menuLabel: string
+  heroBannerImageUrl: string | null
   heroVideoUrls: string[]
   galleryImageUrls: string[]
 }
 
-const HERO_VIDEO_DURATION_MS = 8000
-// Static hero videos for now; admin can add direct MP4 links via Admin → Customize (hero videos)
-const DEFAULT_HERO_VIDEOS = [
-  'https://pub-d258b226bfee42f09be50feec338e732.r2.dev/36e606be-80c0-4276-bb11-2953cbc270f1/documents/7754525-hd_1920_1080_30fps.mp4',
-  'https://pub-d258b226bfee42f09be50feec338e732.r2.dev/36e606be-80c0-4276-bb11-2953cbc270f1/documents/12057394_4096_2160_24fps.mp4',
-  'https://pub-d258b226bfee42f09be50feec338e732.r2.dev/36e606be-80c0-4276-bb11-2953cbc270f1/documents/4786785-uhd_3840_2160_30fps.mp4',
-]
-
 export default function HomePage() {
   const router = useRouter()
-  const heroVideosRef = useRef<(HTMLVideoElement | null)[]>([])
   const [settings, setSettings] = useState<SiteSettings>({
     brandName: 'Salon',
     menuLabel: 'Services',
+    heroBannerImageUrl: null,
     heroVideoUrls: [],
     galleryImageUrls: [],
   })
   const [categories, setCategories] = useState<Category[]>([])
   const [allServices, setAllServices] = useState<Service[]>([])
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null)
+  const [subcategoryPopupCategory, setSubcategoryPopupCategory] = useState<Category | null>(null)
   const [selectedServices, setSelectedServices] = useState<Service[]>([])
   const [modalService, setModalService] = useState<Service | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [heroVideoIndex, setHeroVideoIndex] = useState(0)
-
-  const heroVideoUrls = settings.heroVideoUrls?.length
-    ? settings.heroVideoUrls
-    : process.env.NEXT_PUBLIC_HERO_VIDEO_URL
-      ? [process.env.NEXT_PUBLIC_HERO_VIDEO_URL]
-      : DEFAULT_HERO_VIDEOS
-
-  // Auto-advance carousel
-  useEffect(() => {
-    if (heroVideoUrls.length <= 1) return
-    const t = setInterval(() => {
-      setHeroVideoIndex((i) => (i + 1) % heroVideoUrls.length)
-    }, HERO_VIDEO_DURATION_MS)
-    return () => clearInterval(t)
-  }, [heroVideoUrls.length])
-
-  // Play only the visible video; pause others (fixes autoplay when multiple videos)
-  useEffect(() => {
-    if (heroVideoUrls.length === 0) return
-    const timer = requestAnimationFrame(() => {
-      heroVideosRef.current.forEach((el, i) => {
-        if (!el) return
-        if (i === heroVideoIndex) {
-          el.play().catch(() => {})
-        } else {
-          el.pause()
-        }
-      })
-    })
-    return () => cancelAnimationFrame(timer)
-  }, [heroVideoIndex, heroVideoUrls.length])
-
-  const goPrev = () => {
-    setHeroVideoIndex((i) => (i - 1 + heroVideoUrls.length) % heroVideoUrls.length)
-  }
-  const goNext = () => {
-    setHeroVideoIndex((i) => (i + 1) % heroVideoUrls.length)
-  }
 
   useEffect(() => {
     setUserRole('CUSTOMER')
@@ -122,6 +151,7 @@ export default function HomePage() {
         setSettings({
           brandName: data.brandName ?? 'Salon',
           menuLabel: data.menuLabel ?? 'Services',
+          heroBannerImageUrl: data.heroBannerImageUrl ?? null,
           heroVideoUrls: Array.isArray(data.heroVideoUrls) ? data.heroVideoUrls : [],
           galleryImageUrls: Array.isArray(data.galleryImageUrls) ? data.galleryImageUrls : [],
         })
@@ -156,11 +186,43 @@ export default function HomePage() {
   }
 
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId)
-  const displayServices = selectedCategoryId
-    ? (selectedCategory?.services ?? []).length > 0
-      ? selectedCategory!.services
-      : allServices.filter((s) => s.categoryId === selectedCategoryId)
-    : allServices
+  const selectedSubcategory = selectedCategory?.subcategories?.find((s) => s.id === selectedSubcategoryId)
+
+  const displayServices = (() => {
+    if (selectedSubcategoryId && selectedSubcategory) {
+      return selectedSubcategory.services ?? []
+    }
+    if (selectedCategoryId && selectedCategory) {
+      const subs = selectedCategory.subcategories ?? []
+      if (subs.length > 0) {
+        return subs.flatMap((s) => s.services ?? [])
+      }
+      if ((selectedCategory.services ?? []).length > 0) return selectedCategory.services!
+      return allServices.filter((s) => s.categoryId === selectedCategoryId)
+    }
+    return allServices
+  })()
+
+  const handleCategoryClick = (cat: Category) => {
+    const subs = cat.subcategories ?? []
+    if (subs.length > 0) {
+      setSubcategoryPopupCategory(cat)
+      setSelectedCategoryId(null)
+      setSelectedSubcategoryId(null)
+    } else {
+      setSubcategoryPopupCategory(null)
+      setSelectedCategoryId(cat.id)
+      setSelectedSubcategoryId(null)
+    }
+  }
+
+  const handleSubcategorySelect = (sub: SubCategory | null) => {
+    if (subcategoryPopupCategory) {
+      setSelectedCategoryId(subcategoryPopupCategory.id)
+      setSelectedSubcategoryId(sub?.id ?? null)
+      setSubcategoryPopupCategory(null)
+    }
+  }
 
   const handleServiceClick = (service: Service) => {
     setModalService(service)
@@ -175,130 +237,45 @@ export default function HomePage() {
 
   const handleContinue = () => {
     sessionStorage.setItem('selectedServices', JSON.stringify(selectedServices))
-    router.push('/booking/location')
+    router.push('/cart')
   }
 
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0)
-  const hasHeroVideos = heroVideoUrls.length > 0
-
-  const scrollToServices = () => {
-    document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  const startBooking = () => {
-    router.push('/booking/location')
-  }
+  const hasHeroBanner = !!settings.heroBannerImageUrl
 
   return (
     <div className="min-h-screen bg-gray-50 pb-28 sm:pb-24">
-      {/* Hero - full-screen video carousel with smooth transitions */}
-      <section className="relative w-full h-screen min-h-[480px] bg-gray-900 text-white overflow-hidden">
-        {/* Background: video carousel or gradient */}
-        {hasHeroVideos ? (
+      {/* Hero banner - 30% viewport height, image or gradient; mobile-friendly */}
+      <section className="relative w-full h-[30vh] min-h-[140px] max-h-[280px] sm:max-h-[320px] bg-gray-900 text-white overflow-hidden">
+        {/* Background: banner image or gradient */}
+        {hasHeroBanner ? (
           <>
-            {heroVideoUrls.map((url, i) => (
-              <video
-                key={`${url}-${i}`}
-                ref={(el) => {
-                  heroVideosRef.current[i] = el
-                  if (el && i === heroVideoIndex) el.play().catch(() => {})
-                }}
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="auto"
-                onCanPlay={(e) => {
-                  if (i === heroVideoIndex) e.currentTarget.play().catch(() => {})
-                }}
-                className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[1200ms] ease-in-out"
-                style={{ opacity: i === heroVideoIndex ? 1 : 0, zIndex: i === heroVideoIndex ? 1 : 0 }}
-                src={url}
-              />
-            ))}
-            <div className="absolute inset-0 bg-black/40 z-[2]" aria-hidden />
-
-            {/* Left / right tap zones to slide carousel */}
-            {heroVideoUrls.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  onClick={goPrev}
-                  className="absolute left-0 top-0 bottom-0 z-20 w-[28%] max-w-[180px] cursor-pointer touch-manipulation flex items-center justify-start pl-2 sm:pl-4 group"
-                  aria-label="Previous video"
-                >
-                  <span className="opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity rounded-full bg-black/30 p-2">
-                    <ChevronLeft size={28} className="text-white" />
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={goNext}
-                  className="absolute right-0 top-0 bottom-0 z-20 w-[28%] max-w-[180px] cursor-pointer touch-manipulation flex items-center justify-end pr-2 sm:pr-4 group"
-                  aria-label="Next video"
-                >
-                  <span className="opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity rounded-full bg-black/30 p-2">
-                    <ChevronRight size={28} className="text-white" />
-                  </span>
-                </button>
-                {/* Dot indicators */}
-                <div className="absolute bottom-6 left-0 right-0 z-20 flex justify-center gap-2">
-                  {heroVideoUrls.map((_, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setHeroVideoIndex(i)}
-                      className={`h-2 rounded-full transition-all touch-manipulation ${
-                        i === heroVideoIndex ? 'w-6 bg-white' : 'w-2 bg-white/50 hover:bg-white/80'
-                      }`}
-                      aria-label={`Go to slide ${i + 1}`}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
+            <img
+              src={settings.heroBannerImageUrl!}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/45 z-[1]" aria-hidden />
           </>
         ) : (
           <div className="absolute inset-0 bg-gradient-to-r from-primary-700 to-primary-900 z-[1]" />
         )}
-
-        {/* Center content - above overlay so Book appointment is clickable */}
-        <div className="absolute inset-0 z-[25] flex flex-col items-center justify-center px-4 pt-16 pb-20 sm:pt-12 pointer-events-none">
-          <div className="pointer-events-auto flex flex-col items-center">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-center drop-shadow-lg px-2">
-            {settings.brandName}
-          </h2>
-          <p className="text-base sm:text-lg md:text-xl text-white/90 mt-2 sm:mt-3 text-center max-w-md px-2">
-            Book your appointment
-          </p>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              startBooking()
-            }}
-            className="mt-6 sm:mt-8 inline-flex items-center justify-center gap-2 bg-white text-gray-900 px-6 py-3.5 sm:px-8 sm:py-4 rounded-full font-semibold hover:bg-gray-100 shadow-xl transition-all min-h-[48px] touch-manipulation cursor-pointer"
-            aria-label="Book appointment - choose location then date and time"
-          >
-            <Play size={20} />
-            Book appointment
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              scrollToServices()
-            }}
-            className="mt-3 sm:mt-4 inline-flex items-center gap-1 text-white/90 hover:text-white text-sm font-medium transition-colors py-2 touch-manipulation"
-          >
-            Or scroll to {settings.menuLabel.toLowerCase()}
-            <ChevronDown size={18} className="animate-bounce" />
-          </button>
-          </div>
-        </div>
       </section>
+
+      {/* Videos – just below banner: auto-play, auto-scroll to next when video ends */}
+      {(() => {
+        const videoUrls =
+          (settings.heroVideoUrls?.length ?? 0) > 0
+            ? settings.heroVideoUrls
+            : HERO_VIDEO_URL
+              ? [HERO_VIDEO_URL]
+              : []
+        return videoUrls.length > 0 ? (
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+            <HeroVideoCarousel urls={videoUrls} />
+          </section>
+        ) : null
+      })()}
 
       {/* Gallery (custom photos from admin) - scroll on mobile */}
       {settings.galleryImageUrls?.length > 0 && (
@@ -312,41 +289,41 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Main: mobile horizontal categories + desktop sidebar + content */}
-      <div id="services" className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-          {/* Mobile / tablet: horizontal category pills */}
-          <div className="lg:hidden">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{settings.menuLabel}</h2>
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory touch-pan-x">
+      {/* Main: sticky Services header + scrollable content */}
+      <div id="services" className="max-w-7xl mx-auto px-4 sm:px-6 scroll-mt-[88px]">
+        {/* Sticky header: Services + category pills – stays at top when scrolling (mobile) */}
+        <div className="lg:hidden sticky top-14 z-40 bg-gray-50 pt-6 pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6">
+          <h2 className="text-base font-bold text-gray-900 mb-2 sm:mb-3">{settings.menuLabel}</h2>
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => { setSelectedCategoryId(null); setSelectedSubcategoryId(null); setSubcategoryPopupCategory(null) }}
+              className={`px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-colors min-h-[32px] sm:min-h-[36px] touch-manipulation ${
+                !selectedCategoryId
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              All
+            </button>
+            {categories.map((cat) => (
               <button
+                key={cat.id}
                 type="button"
-                onClick={() => setSelectedCategoryId(null)}
-                className={`flex-shrink-0 snap-start px-4 py-2.5 rounded-full text-sm font-medium transition-colors min-h-[44px] touch-manipulation ${
-                  !selectedCategoryId
+                onClick={() => handleCategoryClick(cat)}
+                className={`px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-colors min-h-[32px] sm:min-h-[36px] touch-manipulation ${
+                  selectedCategoryId === cat.id
                     ? 'bg-gray-900 text-white'
                     : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                All
+                {cat.name}
               </button>
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setSelectedCategoryId(cat.id)}
-                  className={`flex-shrink-0 snap-start px-4 py-2.5 rounded-full text-sm font-medium transition-colors min-h-[44px] touch-manipulation ${
-                    selectedCategoryId === cat.id
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  {cat.name}
-                </button>
-              ))}
-            </div>
+            ))}
           </div>
+        </div>
 
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 pb-6 sm:pb-8">
           {/* Desktop: left sidebar - categories */}
           <aside className="hidden lg:block w-64 flex-shrink-0">
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden sticky top-24">
@@ -357,7 +334,7 @@ export default function HomePage() {
               <nav className="py-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedCategoryId(null)}
+                  onClick={() => { setSelectedCategoryId(null); setSelectedSubcategoryId(null); setSubcategoryPopupCategory(null) }}
                   className={`w-full text-left px-4 py-3 flex items-center justify-between text-sm font-medium transition-colors ${
                     !selectedCategoryId
                       ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-600'
@@ -367,59 +344,68 @@ export default function HomePage() {
                   All Services
                   <ChevronRight size={16} className="text-gray-400" />
                 </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setSelectedCategoryId(cat.id)}
-                    className={`w-full text-left px-4 py-3 flex items-center justify-between text-sm font-medium transition-colors ${
-                      selectedCategoryId === cat.id
-                        ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-600'
-                        : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'
-                    }`}
-                  >
-                    {cat.name}
-                    <span className="text-xs text-gray-400">({cat.services?.length ?? 0})</span>
-                    <ChevronRight size={16} className="text-gray-400" />
-                  </button>
-                ))}
+                {categories.map((cat) => {
+                  const count = (cat.subcategories?.reduce((s, sub) => s + (sub.services?.length ?? 0), 0) ?? 0) || (cat.services?.length ?? 0)
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => handleCategoryClick(cat)}
+                      className={`w-full text-left px-4 py-3 flex items-center justify-between text-sm font-medium transition-colors ${
+                        selectedCategoryId === cat.id
+                          ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-600'
+                          : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'
+                      }`}
+                    >
+                      {cat.name}
+                      <span className="text-xs text-gray-400">({count})</span>
+                      <ChevronRight size={16} className="text-gray-400" />
+                    </button>
+                  )
+                })}
               </nav>
             </div>
           </aside>
 
-          {/* Main content - service cards */}
+          {/* Main content - service cards (2-col grid on mobile, Yes Madam style) */}
           <main className="flex-1 min-w-0">
-            <div className="mb-4 sm:mb-6">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-                {selectedCategory ? selectedCategory.name.toUpperCase() : `BROWSE ALL ${settings.menuLabel.toUpperCase()}`}
+            <div className="mb-3 sm:mb-6">
+              <h2 className="text-lg sm:text-2xl font-bold text-gray-900">
+                {selectedSubcategory
+                  ? `${selectedCategory?.name} › ${selectedSubcategory.name}`
+                  : selectedCategory
+                    ? selectedCategory.name
+                    : `All ${settings.menuLabel}`}
               </h2>
-              <p className="text-gray-500 mt-1 text-sm sm:text-base">
-                {selectedCategory
-                  ? selectedCategory.description || `Select from ${selectedCategory.name} services`
-                  : 'Select a category or choose from all services below.'}
+              <p className="text-gray-500 mt-0.5 sm:mt-1 text-xs sm:text-base">
+                {selectedSubcategory
+                  ? selectedSubcategory.description || `${selectedSubcategory.name} services`
+                  : selectedCategory
+                    ? selectedCategory.description || `${selectedCategory.name} services`
+                    : 'Choose a category above or pick from all services.'}
               </p>
             </div>
 
             {isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 lg:gap-6">
                 {[...Array(6)].map((_, i) => (
-                  <div key={i} className="bg-white rounded-2xl border border-gray-200 animate-pulse overflow-hidden">
+                  <div key={i} className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 animate-pulse overflow-hidden">
                     <div className="aspect-[4/3] bg-gray-200" />
-                    <div className="p-5 space-y-2">
-                      <div className="h-5 bg-gray-200 rounded w-3/4" />
-                      <div className="h-4 bg-gray-200 rounded w-1/2" />
-                      <div className="h-10 bg-gray-200 rounded w-full mt-4" />
+                    <div className="p-3 sm:p-5 space-y-2">
+                      <div className="h-4 sm:h-5 bg-gray-200 rounded w-3/4" />
+                      <div className="h-3 sm:h-4 bg-gray-200 rounded w-1/2" />
+                      <div className="h-8 sm:h-10 bg-gray-200 rounded w-full mt-2 sm:mt-4" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : displayServices.length === 0 ? (
-              <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                <p className="text-gray-500 text-lg">No services in this category yet.</p>
-                <p className="text-sm text-gray-400 mt-2">Select another category or view All Services.</p>
+              <div className="bg-white rounded-xl border border-gray-200 p-8 sm:p-12 text-center">
+                <p className="text-gray-500 text-base sm:text-lg">No services in this category yet.</p>
+                <p className="text-xs sm:text-sm text-gray-400 mt-2">Select another category or view All.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 lg:gap-6">
                 {displayServices.map((service) => (
                   <ServiceCard
                     key={service.id}
@@ -438,6 +424,58 @@ export default function HomePage() {
           </main>
         </div>
       </div>
+
+      {/* Subcategory selection popup */}
+      {subcategoryPopupCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[85vh] overflow-hidden shadow-2xl flex flex-col">
+            <div className="p-4 sm:p-6 border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900">Select subcategory</h3>
+              <p className="text-sm text-gray-500 mt-0.5">{subcategoryPopupCategory.name}</p>
+            </div>
+            <div className="overflow-y-auto flex-1 p-4 sm:p-6">
+              <button
+                type="button"
+                onClick={() => handleSubcategorySelect(null)}
+                className="w-full flex items-center gap-3 p-4 rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all text-left mb-2"
+              >
+                <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 font-medium">All</div>
+                <div>
+                  <p className="font-medium text-gray-900">All {subcategoryPopupCategory.name}</p>
+                  <p className="text-xs text-gray-500">View all services in this category</p>
+                </div>
+              </button>
+              {(subcategoryPopupCategory.subcategories ?? []).map((sub) => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => handleSubcategorySelect(sub)}
+                  className="w-full flex items-center gap-3 p-4 rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all text-left mb-2"
+                >
+                  {sub.imageUrl ? (
+                    <img src={sub.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 font-medium">{sub.name.charAt(0)}</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900">{sub.name}</p>
+                    <p className="text-xs text-gray-500">{(sub.services?.length ?? 0)} services</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="p-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setSubcategoryPopupCategory(null)}
+                className="w-full py-2.5 text-gray-600 hover:text-gray-900 font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modalService && (
         <ServiceModal

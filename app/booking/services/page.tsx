@@ -14,6 +14,17 @@ interface Service {
   duration: number
   imageUrl?: string
   categoryId?: string
+  subCategoryId?: string
+}
+
+interface SubCategory {
+  id: string
+  name: string
+  slug: string
+  description?: string
+  imageUrl?: string
+  order: number
+  services: Service[]
 }
 
 interface Category {
@@ -22,6 +33,7 @@ interface Category {
   slug: string
   order: number
   services?: Service[]
+  subcategories?: SubCategory[]
 }
 
 export default function BookingServicesPage() {
@@ -30,6 +42,8 @@ export default function BookingServicesPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [allServices, setAllServices] = useState<Service[]>([])
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null)
+  const [subcategoryPopupCategory, setSubcategoryPopupCategory] = useState<Category | null>(null)
   const [selectedServices, setSelectedServices] = useState<Service[]>([])
   const [modalService, setModalService] = useState<Service | null>(null)
   const [loading, setLoading] = useState(true)
@@ -68,11 +82,43 @@ export default function BookingServicesPage() {
   }, [router])
 
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId)
-  const displayServices = selectedCategoryId
-    ? (selectedCategory?.services ?? []).length > 0
-      ? selectedCategory!.services!
-      : allServices.filter((s) => s.categoryId === selectedCategoryId)
-    : allServices
+  const selectedSubcategory = selectedCategory?.subcategories?.find((s) => s.id === selectedSubcategoryId)
+
+  const displayServices = (() => {
+    if (selectedSubcategoryId && selectedSubcategory) {
+      return selectedSubcategory.services ?? []
+    }
+    if (selectedCategoryId && selectedCategory) {
+      const subs = selectedCategory.subcategories ?? []
+      if (subs.length > 0) {
+        return subs.flatMap((s) => s.services ?? [])
+      }
+      if ((selectedCategory.services ?? []).length > 0) return selectedCategory.services!
+      return allServices.filter((s) => s.categoryId === selectedCategoryId)
+    }
+    return allServices
+  })()
+
+  const handleCategoryClick = (cat: Category) => {
+    const subs = cat.subcategories ?? []
+    if (subs.length > 0) {
+      setSubcategoryPopupCategory(cat)
+      setSelectedCategoryId(null)
+      setSelectedSubcategoryId(null)
+    } else {
+      setSubcategoryPopupCategory(null)
+      setSelectedCategoryId(cat.id)
+      setSelectedSubcategoryId(null)
+    }
+  }
+
+  const handleSubcategorySelect = (sub: SubCategory | null) => {
+    if (subcategoryPopupCategory) {
+      setSelectedCategoryId(subcategoryPopupCategory.id)
+      setSelectedSubcategoryId(sub?.id ?? null)
+      setSubcategoryPopupCategory(null)
+    }
+  }
 
   const handleServiceClick = (service: Service) => {
     setModalService(service)
@@ -103,19 +149,19 @@ export default function BookingServicesPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="bg-white shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Add services</h1>
-          <p className="text-gray-600 mt-1">Choose services for your appointment</p>
+        <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
+          <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Add services</h1>
+          <p className="text-gray-600 mt-0.5 text-sm sm:text-base">Choose services for your appointment</p>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Category pills */}
-        <div className="flex gap-2 overflow-x-auto pb-4 -mx-4 px-4">
+      <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
+        {/* Category pills: wrap to next line, smaller on mobile (no horizontal scroll) */}
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 pb-4">
           <button
             type="button"
-            onClick={() => setSelectedCategoryId(null)}
-            className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            onClick={() => { setSelectedCategoryId(null); setSelectedSubcategoryId(null); setSubcategoryPopupCategory(null) }}
+            className={`px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-colors min-h-[32px] sm:min-h-[36px] touch-manipulation ${
               !selectedCategoryId ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
             }`}
           >
@@ -125,8 +171,8 @@ export default function BookingServicesPage() {
             <button
               key={cat.id}
               type="button"
-              onClick={() => setSelectedCategoryId(cat.id)}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              onClick={() => handleCategoryClick(cat)}
+              className={`px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-colors min-h-[32px] sm:min-h-[36px] touch-manipulation ${
                 selectedCategoryId === cat.id ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
               }`}
             >
@@ -136,7 +182,7 @@ export default function BookingServicesPage() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-4">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="bg-white rounded-2xl border border-gray-200 animate-pulse overflow-hidden">
                 <div className="aspect-[4/3] bg-gray-200" />
@@ -148,7 +194,7 @@ export default function BookingServicesPage() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-4">
             {displayServices.map((service) => (
               <ServiceCard
                 key={service.id}
@@ -167,22 +213,74 @@ export default function BookingServicesPage() {
       </div>
 
       {/* Bottom bar: selected count + continue */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 p-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-          <p className="text-gray-700 font-medium">
-            {selectedServices.length} {selectedServices.length === 1 ? 'service' : 'services'} · ₹{totalPrice}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 p-3 sm:p-4 pb-[env(safe-area-inset-bottom)]">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+          <p className="text-gray-700 font-medium text-sm sm:text-base">
+            {selectedServices.length} {selectedServices.length === 1 ? 'service' : 'services'} · ₹{totalPrice.toLocaleString('en-IN')}
           </p>
           <button
             type="button"
             onClick={handleContinue}
             disabled={selectedServices.length === 0}
-            className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-full font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="flex items-center gap-1.5 sm:gap-2 bg-gray-900 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-medium text-sm sm:text-base hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[44px] touch-manipulation"
           >
             Continue to payment
-            <ChevronRight size={20} />
+            <ChevronRight size={18} className="sm:w-5 sm:h-5" />
           </button>
         </div>
       </div>
+
+      {/* Subcategory selection popup */}
+      {subcategoryPopupCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[85vh] overflow-hidden shadow-2xl flex flex-col">
+            <div className="p-4 sm:p-6 border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900">Select subcategory</h3>
+              <p className="text-sm text-gray-500 mt-0.5">{subcategoryPopupCategory.name}</p>
+            </div>
+            <div className="overflow-y-auto flex-1 p-4 sm:p-6">
+              <button
+                type="button"
+                onClick={() => handleSubcategorySelect(null)}
+                className="w-full flex items-center gap-3 p-4 rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all text-left mb-2"
+              >
+                <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 font-medium">All</div>
+                <div>
+                  <p className="font-medium text-gray-900">All {subcategoryPopupCategory.name}</p>
+                  <p className="text-xs text-gray-500">View all services in this category</p>
+                </div>
+              </button>
+              {(subcategoryPopupCategory.subcategories ?? []).map((sub) => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => handleSubcategorySelect(sub)}
+                  className="w-full flex items-center gap-3 p-4 rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all text-left mb-2"
+                >
+                  {sub.imageUrl ? (
+                    <img src={sub.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 font-medium">{sub.name.charAt(0)}</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900">{sub.name}</p>
+                    <p className="text-xs text-gray-500">{(sub.services?.length ?? 0)} services</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="p-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setSubcategoryPopupCategory(null)}
+                className="w-full py-2.5 text-gray-600 hover:text-gray-900 font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modalService && (
         <ServiceModal

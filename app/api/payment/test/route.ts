@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { sendInvoiceWhatsApp } from '@/lib/whatsapp-cloud'
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
 // Test payment endpoint - simulates successful payment for development
 export async function POST(request: Request) {
@@ -19,6 +22,7 @@ export async function POST(request: Request) {
 
     const payment = await prisma.payment.findFirst({
       where: { bookingId },
+      include: { booking: { select: { token: true, user: { select: { name: true, mobile: true } } } } },
     })
     if (!payment) {
       return NextResponse.json({ error: 'Payment not found' }, { status: 404 })
@@ -34,6 +38,16 @@ export async function POST(request: Request) {
         onlineAmount: { increment: paidAmount },
       },
     })
+
+    if (process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID) {
+      const b = payment.booking
+      if (b?.token && b?.user?.mobile) {
+        const invoiceLink = `${APP_URL}/booking/invoice?token=${encodeURIComponent(b.token)}`
+        sendInvoiceWhatsApp(b.user.mobile, b.user.name || 'Customer', invoiceLink).catch((e) =>
+          console.error('Invoice WhatsApp failed:', e)
+        )
+      }
+    }
 
     return NextResponse.json({
       success: true,

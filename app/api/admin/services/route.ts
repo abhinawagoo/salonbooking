@@ -21,7 +21,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { name, description, price, duration, imageUrl, categoryId } = body
+    const { name, description, price, duration, imageUrl, categoryId, subCategoryId } = body
 
     // Validation
     if (!name || !price || !duration) {
@@ -29,6 +29,20 @@ export async function POST(request: Request) {
         { error: 'Name, price, and duration are required' },
         { status: 400 }
       )
+    }
+
+    // Services must be under subcategories when category has subcategories
+    if (categoryId) {
+      const category = await prisma.category.findUnique({
+        where: { id: categoryId },
+        include: { subcategories: { select: { id: true } } },
+      })
+      if (category?.subcategories?.length && !subCategoryId) {
+        return NextResponse.json(
+          { error: 'Subcategory is required. Services belong under subcategories.' },
+          { status: 400 }
+        )
+      }
     }
 
     const service = await prisma.service.create({
@@ -39,6 +53,7 @@ export async function POST(request: Request) {
         duration: parseInt(duration),
         imageUrl: imageUrl?.trim() || null,
         categoryId: categoryId?.trim() || null,
+        subCategoryId: subCategoryId?.trim() || null,
         isActive: true,
       },
     })

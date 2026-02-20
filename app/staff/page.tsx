@@ -102,10 +102,26 @@ export default function StaffDashboard() {
     }
   }
 
-  const handleDownloadInvoice = (booking: Booking) => {
+  const handleDownloadInvoice = async (booking: Booking) => {
     const totalAmount = booking.payment?.totalAmount ?? booking.services.reduce((s, bs) => s + bs.price, 0)
     const amountPaid = booking.payment?.amountPaid ?? 0
     const dueAmount = Math.max(0, totalAmount - amountPaid)
+    let settings: { brandName?: string; invoiceWebsite?: string; invoiceUpiId?: string; invoiceTerms?: string } = {}
+    try {
+      settings = await fetch('/api/settings').then((r) => r.json())
+    } catch {
+      // use defaults
+    }
+    let qrDataUrl: string | undefined
+    if (settings.invoiceUpiId) {
+      try {
+        const QRCode = (await import('qrcode')).default
+        const upiUrl = `upi://pay?pa=${settings.invoiceUpiId}&pn=${encodeURIComponent(settings.brandName || 'Salon')}&am=${totalAmount}&tn=Invoice-${booking.token}`
+        qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 120, margin: 1 })
+      } catch {
+        // skip
+      }
+    }
     const payload = {
       bookingToken: booking.token,
       date: new Date(booking.date),
@@ -127,6 +143,12 @@ export default function StaffDashboard() {
       cashAmount: booking.payment?.cashAmount ?? 0,
       customerName: booking.user.name,
       customerMobile: booking.user.mobile,
+      brandName: settings.brandName,
+      website: settings.invoiceWebsite,
+      upiId: settings.invoiceUpiId,
+      terms: settings.invoiceTerms,
+      qrDataUrl,
+      invoiceNumber: booking.token,
     }
     const locationImageUrl = booking.location?.imageUrl
     if (locationImageUrl) {

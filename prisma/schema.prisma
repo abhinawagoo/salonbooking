@@ -11,14 +11,27 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  mobile    String   @unique
-  role      String   @default("CUSTOMER") // CUSTOMER, STAFF, ADMIN
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id @default(cuid())
+  name             String
+  mobile           String   @unique
+  email            String?  // optional, for newsletters
+  role             String   @default("CUSTOMER") // CUSTOMER, STAFF, ADMIN
+  marketingConsent Boolean  @default(true) // newsletters, promotions via Email, SMS, WhatsApp
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
   
   bookings Booking[]
+}
+
+// OTP for mobile login/signup; expires in 10 min
+model OtpRequest {
+  id        String   @id @default(cuid())
+  mobile    String
+  otp       String   // 4-digit; in production consider hashing
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@index([mobile, expiresAt])
 }
 
 model Category {
@@ -43,6 +56,7 @@ model SubCategory {
   name        String
   slug        String
   description String?
+  imageUrl    String?
   order       Int       @default(0)
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
@@ -134,12 +148,16 @@ model Payment {
   updatedAt        DateTime @updatedAt
 }
 
-// Singleton: one row (id=1). Admin customizations: brand name, menu label, hero videos, gallery images.
+// Singleton: one row (id=1). Admin customizations: brand name, menu label, hero banner, gallery images.
 model SiteCustomization {
-  id                Int      @id @default(1)
-  brandName         String   @default("Salon")
-  menuLabel         String   @default("Services")
-  heroVideoUrls     String?  // JSON array of URL strings (max 5)
-  galleryImageUrls  String?  // JSON array of URL strings (max 5)
-  updatedAt         DateTime @updatedAt
+  id                  Int      @id @default(1)
+  brandName           String   @default("Salon")
+  menuLabel           String   @default("Services")
+  heroBannerImageUrl  String?  // Single image URL for hero banner (30% height); replaces video
+  heroVideoUrls       String?  // JSON array (legacy / unused when heroBannerImageUrl set)
+  galleryImageUrls    String?  // JSON array of URL strings (max 5)
+  invoiceWebsite      String?  // Website shown on tax invoice
+  invoiceUpiId        String?  // UPI ID for payment QR on invoice
+  invoiceTerms        String?  // Terms & conditions on invoice (e.g. "Goods once sold will not be taken back")
+  updatedAt           DateTime @updatedAt
 }

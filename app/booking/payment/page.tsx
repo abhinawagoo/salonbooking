@@ -62,7 +62,7 @@ export default function PaymentPage() {
         return
       }
       
-      // If PhonePe URL is available, redirect to it
+      // PhonePe: redirect to PayPage (reliable; iframe can be re-enabled later with correct script for env)
       if (data.paymentUrl) {
         window.location.href = data.paymentUrl
         return
@@ -118,18 +118,18 @@ export default function PaymentPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="bg-white border-b border-gray-100">
-        <div className="max-w-4xl mx-auto px-6 py-12">
-          <h1 className="text-4xl font-light text-gray-900 mb-3">Payment</h1>
-          <p className="text-lg text-gray-500 font-light">Complete your booking with secure payment</p>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+          <h1 className="text-xl sm:text-3xl font-light text-gray-900 mb-1 sm:mb-3">Payment</h1>
+          <p className="text-sm sm:text-base text-gray-500 font-light">Complete your booking with secure payment</p>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {isProcessing ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-black mb-4"></div>
-            <p className="text-xl font-light text-gray-900 mb-2">Processing Payment...</p>
-            <p className="text-sm text-gray-500 font-light">Please wait while we process your payment</p>
+          <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 p-6 sm:p-12 shadow-sm text-center">
+            <div className="inline-block animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-black mb-3 sm:mb-4"></div>
+            <p className="text-base sm:text-xl font-light text-gray-900 mb-2">Processing Payment...</p>
+            <p className="text-xs sm:text-sm text-gray-500 font-light">Please wait while we process your payment</p>
           </div>
         ) : (
           <PaymentScreen

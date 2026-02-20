@@ -7,7 +7,23 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
-    const { name, description, price, duration, imageUrl, isActive, categoryId } = body
+    const { name, description, price, duration, imageUrl, isActive, categoryId, subCategoryId } = body
+
+    // Services must be under subcategories when category has subcategories
+    const catId = categoryId ?? (await prisma.service.findUnique({ where: { id: params.id }, select: { categoryId: true } }))?.categoryId
+    if (catId) {
+      const category = await prisma.category.findUnique({
+        where: { id: catId },
+        include: { subcategories: { select: { id: true } } },
+      })
+      const subId = subCategoryId ?? (await prisma.service.findUnique({ where: { id: params.id }, select: { subCategoryId: true } }))?.subCategoryId
+      if (category?.subcategories?.length && !subId) {
+        return NextResponse.json(
+          { error: 'Subcategory is required. Services belong under subcategories.' },
+          { status: 400 }
+        )
+      }
+    }
 
     const updateData: Record<string, unknown> = {}
     if (name !== undefined) updateData.name = name
@@ -17,6 +33,7 @@ export async function PUT(
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl
     if (isActive !== undefined) updateData.isActive = isActive
     if (categoryId !== undefined) updateData.categoryId = categoryId?.trim() || null
+    if (subCategoryId !== undefined) updateData.subCategoryId = subCategoryId?.trim() || null
 
     const service = await prisma.service.update({
       where: { id: params.id },

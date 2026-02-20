@@ -1,67 +1,23 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import crypto from 'crypto'
+import { getAuthFromCookie } from '@/lib/auth-jwt'
 import { getSlotsInRange, isWithinClosingTime, MAX_BOOKINGS_PER_SLOT } from '@/lib/slots'
 import { buildBookingNotificationPayload, sendBookingNotification } from '@/lib/notify'
+import { createPhonePePayment } from '@/lib/phonepe'
+import { nanoid } from 'nanoid'
+
+type UserRow = { id: string; name: string; mobile: string; role: string }
 
 function generateToken() {
   return Math.random().toString(36).substring(2, 10).toUpperCase() + 
          Math.random().toString(36).substring(2, 10).toUpperCase()
 }
 
-async function initiatePhonePePayment(bookingId: string, amount: number) {
-  try {
-    const merchantId = process.env.PHONEPE_MERCHANT_ID || 'PGTESTPAYUAT'
-    const saltKey = process.env.PHONEPE_SALT_KEY || '099eb0cd-02cf-4e2a-8aca-3e6c6cc41fdb'
-    const saltIndex = process.env.PHONEPE_SALT_INDEX || '1'
-    const env = process.env.PHONEPE_ENV || 'sandbox'
-    
-    const baseUrl = env === 'production' 
-      ? 'https://api.phonepe.com/apis/hermes'
-      : 'https://api-preprod.phonepe.com/apis/pg-sandbox'
-
-    const payload = {
-      merchantId,
-      merchantTransactionId: `TXN${Date.now()}`,
-      amount: amount * 100, // Amount in paise
-      merchantUserId: bookingId,
-      redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/callback?bookingId=${bookingId}`,
-      redirectMode: 'POST',
-      callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/callback`,
-      paymentInstrument: {
-        type: 'PAY_PAGE',
-      },
-    }
-
-    const payloadString = JSON.stringify(payload)
-    const base64Payload = Buffer.from(payloadString).toString('base64')
-    const stringToHash = base64Payload + '/pg/v1/pay' + saltKey
-    const sha256Hash = crypto.createHash('sha256').update(stringToHash).digest('hex')
-    const xVerify = sha256Hash + '###' + saltIndex
-
-    const response = await fetch(`${baseUrl}/pg/v1/pay`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-VERIFY': xVerify,
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({
-        request: base64Payload,
-      }),
-    })
-
-    const data = await response.json()
-    
-    if (data.success && data.data.instrumentResponse.redirectInfo.url) {
-      return data.data.instrumentResponse.redirectInfo.url
-    }
-    
-    return null
-  } catch (error) {
-    console.error('Error initiating PhonePe payment:', error)
-    return null
-  }
+async function initiatePhonePePayment(bookingId: string, amount: number): Promise<string | null> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const redirectUrl = `${appUrl}/api/payment/callback?bookingId=${encodeURIComponent(bookingId)}`
+  const amountPaisa = Math.round(amount * 100)
+  return createPhonePePayment(bookingId, amountPaisa, redirectUrl)
 }
 
 export async function POST(request: Request) {
@@ -86,27 +42,35 @@ export async function POST(request: Request) {
       )
     }
 
-    // Find or create user
-    let user = await prisma.user.findUnique({
-      where: { mobile: customerDetails.mobile },
-    })
+    // Find or create user via raw SQL so we don't depend on User.email / marketingConsent columns (bypass until DB is migrated)
+    const mobile = String(customerDetails.mobile || '').replace(/\D/g, '').slice(-10)
+    const auth = getAuthFromCookie()
+    let user: UserRow | null = null
 
+    if (auth && auth.mobile === mobile) {
+      const byId = await prisma.$queryRaw<UserRow[]>`
+        SELECT id, name, mobile, role FROM "User" WHERE id = ${auth.userId} LIMIT 1
+      `
+      if (byId.length > 0) user = byId[0]
+    }
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          name: customerDetails.name,
-          mobile: customerDetails.mobile,
-          role: 'CUSTOMER',
-        },
-      })
-    } else {
-      // Update name if provided
-      if (customerDetails.name) {
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: { name: customerDetails.name },
-        })
-      }
+      const byMobile = await prisma.$queryRaw<UserRow[]>`
+        SELECT id, name, mobile, role FROM "User" WHERE mobile = ${mobile} LIMIT 1
+      `
+      if (byMobile.length > 0) user = byMobile[0]
+    }
+    if (!user) {
+      const id = nanoid(24)
+      await prisma.$executeRaw`
+        INSERT INTO "User" (id, name, mobile, role, "createdAt", "updatedAt")
+        VALUES (${id}, ${customerDetails.name || 'Guest'}, ${mobile}, 'CUSTOMER', now(), now())
+      `
+      user = { id, name: customerDetails.name || 'Guest', mobile, role: 'CUSTOMER' }
+    } else if (customerDetails.name && customerDetails.name !== user.name) {
+      await prisma.$executeRaw`
+        UPDATE "User" SET name = ${customerDetails.name}, "updatedAt" = now() WHERE id = ${user.id}
+      `
+      user = { ...user, name: customerDetails.name }
     }
 
     // Get service details
@@ -214,12 +178,10 @@ export async function POST(request: Request) {
       },
     })
 
-    // In development, skip PhonePe and use test payment
-    const isDevelopment = process.env.NODE_ENV === 'development' || process.env.USE_TEST_PAYMENT === 'true'
-    
-    let paymentUrl = null
-    if (!isDevelopment) {
-      // Initiate PhonePe payment only in production
+    // Use test payment only when explicitly enabled; otherwise try PhonePe (works in dev if credentials set)
+    const useTestPayment = process.env.USE_TEST_PAYMENT === 'true'
+    let paymentUrl: string | null = null
+    if (!useTestPayment) {
       paymentUrl = await initiatePhonePePayment(booking.id, advanceAmount)
     }
 
@@ -255,7 +217,7 @@ export async function POST(request: Request) {
       bookingId: booking.id,
       token: bookingToken,
       paymentUrl,
-      useTestPayment: isDevelopment, // Flag to indicate test payment should be used
+      useTestPayment: useTestPayment,
     })
   } catch (error) {
     console.error('Error creating booking:', error)

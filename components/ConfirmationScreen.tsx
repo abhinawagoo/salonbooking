@@ -3,6 +3,7 @@
 import { CheckCircle, Calendar, Clock, CreditCard, Download, Printer, Home } from 'lucide-react'
 import { format } from 'date-fns'
 import { useRouter } from 'next/navigation'
+import QRCode from 'qrcode'
 import { generateInvoicePDF } from '@/lib/generateInvoice'
 
 interface Service {
@@ -52,7 +53,22 @@ export default function ConfirmationScreen({
 }: ConfirmationScreenProps) {
   const router = useRouter()
 
-  const handleDownloadInvoice = () => {
+  const handleDownloadInvoice = async () => {
+    let settings: { brandName?: string; invoiceWebsite?: string; invoiceUpiId?: string; invoiceTerms?: string } = {}
+    try {
+      settings = await fetch('/api/settings').then((r) => r.json())
+    } catch {
+      // use defaults
+    }
+    let qrDataUrl: string | undefined
+    if (settings.invoiceUpiId) {
+      try {
+        const upiUrl = `upi://pay?pa=${settings.invoiceUpiId}&pn=${encodeURIComponent(settings.brandName || 'Salon')}&am=${totalAmount}&tn=Invoice-${bookingToken}`
+        qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 120, margin: 1 })
+      } catch {
+        // skip
+      }
+    }
     const payload = {
       bookingToken,
       date,
@@ -70,6 +86,12 @@ export default function ConfirmationScreen({
       locationAddress,
       locationMobile,
       locationImageUrl,
+      brandName: settings.brandName,
+      website: settings.invoiceWebsite,
+      upiId: settings.invoiceUpiId,
+      terms: settings.invoiceTerms,
+      qrDataUrl,
+      invoiceNumber: bookingToken,
     }
     if (locationImageUrl) {
       const img = new Image()
@@ -149,7 +171,11 @@ export default function ConfirmationScreen({
           <div>
             <p className="text-sm text-gray-500">Appointment Date & Time</p>
             <p className="font-semibold text-lg">
-              {format(date, 'EEEE, MMMM d, yyyy')} at {timeSlot}
+              {(() => {
+                const d = date instanceof Date ? date : new Date(date as string)
+                if (Number.isNaN(d.getTime())) return timeSlot ? `— at ${timeSlot}` : '—'
+                return `${format(d, 'EEEE, MMMM d, yyyy')} at ${timeSlot}`
+              })()}
             </p>
           </div>
         </div>

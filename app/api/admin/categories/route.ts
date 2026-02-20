@@ -8,7 +8,13 @@ export async function GET() {
       return NextResponse.json({ error: 'Database client not ready' }, { status: 503 })
     }
     const categories = await prisma.category.findMany({
-      include: { services: { select: { id: true } } },
+      include: {
+        services: { select: { id: true } },
+        subcategories: {
+          orderBy: { order: 'asc' },
+          include: { services: { select: { id: true } } },
+        },
+      },
       orderBy: { order: 'asc' },
     })
     return NextResponse.json(categories)

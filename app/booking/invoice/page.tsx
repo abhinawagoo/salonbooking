@@ -4,7 +4,9 @@ import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Download, Calendar, CreditCard, FileText, MapPin } from 'lucide-react'
 import { format } from 'date-fns'
+import QRCode from 'qrcode'
 import { generateInvoicePDF } from '@/lib/generateInvoice'
+import { numberToWords } from '@/lib/numberToWords'
 
 interface Service {
   id: string
@@ -34,6 +36,7 @@ function InvoicePageContent() {
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [invoiceSettings, setInvoiceSettings] = useState<{ brandName?: string; website?: string; upiId?: string; terms?: string }>({})
 
   useEffect(() => {
     const token = searchParams.get('token')
@@ -42,24 +45,41 @@ function InvoicePageContent() {
       setLoading(false)
       return
     }
-    fetch(`/api/booking/by-token?token=${encodeURIComponent(token)}`)
-      .then((res) => {
+    Promise.all([
+      fetch(`/api/booking/by-token?token=${encodeURIComponent(token)}`).then((res) => {
         if (!res.ok) throw new Error(res.status === 404 ? 'Booking not found' : 'Failed to load')
         return res.json()
-      })
-      .then((data) => {
+      }),
+      fetch('/api/settings').then((r) => r.json()).catch(() => ({})),
+    ])
+      .then(([data, settings]) => {
         setBookingData({
           ...data,
           date: typeof data.date === 'string' ? data.date : data.date?.slice?.(0, 10),
+        })
+        setInvoiceSettings({
+          brandName: settings.brandName,
+          website: settings.invoiceWebsite ?? settings.website,
+          upiId: settings.invoiceUpiId,
+          terms: settings.invoiceTerms,
         })
       })
       .catch((e) => setError(e.message || 'Something went wrong'))
       .finally(() => setLoading(false))
   }, [searchParams])
 
-  const handleDownloadBill = () => {
+  const handleDownloadBill = async () => {
     if (!bookingData) return
     const date = typeof bookingData.date === 'string' ? new Date(bookingData.date) : new Date(bookingData.date)
+    let qrDataUrl: string | undefined
+    if (invoiceSettings.upiId) {
+      try {
+        const upiUrl = `upi://pay?pa=${invoiceSettings.upiId}&pn=${encodeURIComponent(invoiceSettings.brandName || 'Salon')}&am=${bookingData.totalAmount}&tn=Invoice-${bookingData.token}`
+        qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 120, margin: 1 })
+      } catch {
+        // skip QR
+      }
+    }
     const payload = {
       bookingToken: bookingData.token,
       date,
@@ -77,6 +97,12 @@ function InvoicePageContent() {
       cashAmount: bookingData.cashAmount,
       customerName: bookingData.customerName,
       customerMobile: bookingData.customerMobile,
+      brandName: invoiceSettings.brandName,
+      website: invoiceSettings.website,
+      upiId: invoiceSettings.upiId,
+      terms: invoiceSettings.terms,
+      qrDataUrl,
+      invoiceNumber: bookingData.token,
     }
     if (bookingData.locationImageUrl) {
       const img = new Image()
@@ -148,60 +174,101 @@ function InvoicePageContent() {
           </button>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
-          <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
-            <Calendar className="text-primary-600" size={24} />
-            <div>
-              <p className="text-sm text-gray-500">Date & time</p>
-              <p className="font-semibold">
-                {format(dateObj, 'EEEE, MMMM d, yyyy')} at {bookingData.timeSlot}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
-            <CreditCard className="text-primary-600" size={24} />
-            <div>
-              <p className="text-sm text-gray-500">Booking token</p>
-              <p className="font-mono font-semibold">{bookingData.token}</p>
-            </div>
-          </div>
-          {(bookingData.locationName || bookingData.locationAddress || bookingData.locationMobile || bookingData.locationImageUrl) && (
-            <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
-              {bookingData.locationImageUrl ? (
-                <img src={bookingData.locationImageUrl} alt={bookingData.locationName || 'Location'} className="w-14 h-14 rounded-lg object-cover" />
-              ) : (
-                <MapPin className="text-primary-600 shrink-0" size={24} />
-              )}
-              <div>
-                <p className="text-sm text-gray-500">Location</p>
-                <p className="font-semibold">{bookingData.locationName}</p>
-                {bookingData.locationAddress && (
-                  <p className="text-sm text-gray-500">{bookingData.locationAddress}</p>
+        {/* Tax Invoice preview - matches PDF format */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden border-2 border-amber-200/60">
+          <div className="p-6 space-y-4">
+            {/* Header */}
+            <div className="flex justify-between items-start gap-4">
+              <div className="flex gap-3">
+                {bookingData.locationImageUrl && (
+                  <img src={bookingData.locationImageUrl} alt="" className="w-16 h-16 rounded-lg object-cover" />
                 )}
-                {bookingData.locationMobile && (
-                  <p className="text-sm text-gray-500">📞 {bookingData.locationMobile}</p>
-                )}
-              </div>
-            </div>
-          )}
-          <div>
-            <p className="text-sm text-gray-500 mb-2">Services</p>
-            <div className="space-y-2">
-              {bookingData.services.map((s) => (
-                <div key={s.id} className="flex justify-between">
-                  <span>{s.name}</span>
-                  <span>₹{s.price}</span>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 uppercase">{(invoiceSettings.brandName || bookingData.locationName || 'SALON')}</h2>
+                  {bookingData.locationMobile && <p className="text-sm text-gray-600">{bookingData.locationMobile}</p>}
+                  {bookingData.locationAddress && <p className="text-sm text-gray-500">{bookingData.locationAddress}</p>}
+                  {invoiceSettings.website && <p className="text-sm text-gray-500">{invoiceSettings.website}</p>}
                 </div>
-              ))}
-              <div className="flex justify-between pt-3 border-t font-semibold">
-                <span>Total</span>
-                <span>₹{bookingData.totalAmount}</span>
+              </div>
+              <div className="text-right">
+                <h3 className="text-base font-bold text-gray-900">TAX INVOICE</h3>
+                <p className="text-sm text-gray-600">Invoice No.: {bookingData.token}</p>
+                <p className="text-sm text-gray-600">Invoice Date: {format(dateObj, 'dd/MM/yyyy')}</p>
               </div>
             </div>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4 text-sm">
-            <p><strong>Payment:</strong> {bookingData.paymentStatus}</p>
-            <p>Paid: ₹{bookingData.amountPaid} · Due: ₹{bookingData.dueAmount}</p>
+
+            {/* Bill To */}
+            <div className="bg-amber-50/80 rounded p-3">
+              <p className="text-xs font-bold text-gray-700 mb-1">Bill To</p>
+              <p className="font-medium">{bookingData.customerName}</p>
+              <p className="text-sm text-gray-600">Mobile: {bookingData.customerMobile}</p>
+            </div>
+
+            {/* Services table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-amber-50/80">
+                    <th className="text-left py-2 px-2">No</th>
+                    <th className="text-left py-2 px-2">SERVICES</th>
+                    <th className="text-left py-2 px-2">SAC</th>
+                    <th className="text-left py-2 px-2">Qty.</th>
+                    <th className="text-right py-2 px-2">Rate</th>
+                    <th className="text-right py-2 px-2">Tax</th>
+                    <th className="text-right py-2 px-2">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bookingData.services.map((s, i) => {
+                    const taxable = Math.round((s.price / 1.18) * 100) / 100
+                    const tax = Math.round((s.price - taxable) * 100) / 100
+                    return (
+                      <tr key={s.id} className="border-t border-gray-100">
+                        <td className="py-2 px-2">{i + 1}</td>
+                        <td className="py-2 px-2">{s.name}</td>
+                        <td className="py-2 px-2">9984</td>
+                        <td className="py-2 px-2">1 PCS</td>
+                        <td className="py-2 px-2 text-right">{taxable.toFixed(2)}</td>
+                        <td className="py-2 px-2 text-right">{tax.toFixed(2)} (18%)</td>
+                        <td className="py-2 px-2 text-right font-medium">₹{s.price}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Summary */}
+            <div className="bg-amber-50/80 rounded p-3 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span>Total Amount</span>
+                <span className="font-bold">₹{bookingData.totalAmount}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Received Amount</span>
+                <span>₹{bookingData.amountPaid}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Balance</span>
+                <span>₹{bookingData.dueAmount}</span>
+              </div>
+            </div>
+
+            {invoiceSettings.terms && (
+              <p className="text-xs text-gray-500">Terms & Conditions: {invoiceSettings.terms}</p>
+            )}
+
+            <div className="flex justify-between items-end pt-4 border-t">
+              <div>
+                <p className="text-xs text-gray-500">Amount in words</p>
+                <p className="text-sm font-medium">{numberToWords(bookingData.totalAmount)}</p>
+              </div>
+              {invoiceSettings.upiId && (
+                <div className="text-right text-xs text-gray-500">
+                  <p>UPI ID: {invoiceSettings.upiId}</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

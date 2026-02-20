@@ -10,7 +10,7 @@ export async function GET(
       where: { id: params.id },
       include: {
         location: true,
-        user: true,
+        user: { select: { id: true, name: true, mobile: true, role: true } },
         services: {
           include: {
             service: true,
@@ -50,8 +50,8 @@ export async function GET(
       dueAmount,
       onlineAmount: booking.payment?.onlineAmount ?? 0,
       cashAmount: booking.payment?.cashAmount ?? 0,
-      customerName: booking.user.name,
-      customerMobile: booking.user.mobile,
+      customerName: booking.user?.name ?? null,
+      customerMobile: booking.user?.mobile ?? null,
     })
   } catch (error) {
     console.error('Error fetching booking:', error)

@@ -14,6 +14,7 @@ interface Service {
   imageUrl?: string
   isActive: boolean
   categoryId?: string | null
+  subCategoryId?: string | null
 }
 
 export default function AdminDashboard() {
@@ -277,11 +278,19 @@ export default function AdminDashboard() {
   )
 }
 
+interface SubCategory {
+  id: string
+  name: string
+  slug: string
+  order: number
+}
+
 interface Category {
   id: string
   name: string
   slug: string
   order: number
+  subcategories?: SubCategory[]
 }
 
 function ServiceModal({ service, onClose, onSave }: { service: Service | null; onClose: () => void; onSave: () => void }) {
@@ -293,6 +302,7 @@ function ServiceModal({ service, onClose, onSave }: { service: Service | null; o
     duration: service?.duration || 30,
     imageUrl: service?.imageUrl || '',
     categoryId: service?.categoryId ?? '',
+    subCategoryId: service?.subCategoryId ?? '',
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -305,9 +315,14 @@ function ServiceModal({ service, onClose, onSave }: { service: Service | null; o
   }, [])
   useEffect(() => {
     if (service) {
-      setFormData((f) => ({ ...f, categoryId: service.categoryId ?? '', imageUrl: service.imageUrl ?? '' }))
+      setFormData((f) => ({
+        ...f,
+        categoryId: service.categoryId ?? '',
+        subCategoryId: service.subCategoryId ?? '',
+        imageUrl: service.imageUrl ?? '',
+      }))
     }
-  }, [service?.id, service?.categoryId, service?.imageUrl])
+  }, [service?.id, service?.categoryId, service?.subCategoryId, service?.imageUrl])
 
   const deleteImageFromStorage = async (url: string) => {
     try {
@@ -347,6 +362,12 @@ function ServiceModal({ service, onClose, onSave }: { service: Service | null; o
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const cat = categories.find((c) => c.id === formData.categoryId)
+    const subs = cat?.subcategories ?? []
+    if (formData.categoryId && subs.length > 0 && !formData.subCategoryId) {
+      alert('Please select a subcategory. Services belong under subcategories.')
+      return
+    }
     setIsSubmitting(true)
     try {
       const url = service 
@@ -431,7 +452,7 @@ function ServiceModal({ service, onClose, onSave }: { service: Service | null; o
               <label className="block text-sm font-light text-gray-700 mb-3">Category (menu)</label>
               <select
                 value={formData.categoryId}
-                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value, subCategoryId: '' })}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent transition-all font-light"
               >
                 <option value="">No category</option>
@@ -440,6 +461,28 @@ function ServiceModal({ service, onClose, onSave }: { service: Service | null; o
                 ))}
               </select>
             </div>
+            {formData.categoryId && (() => {
+              const cat = categories.find((c) => c.id === formData.categoryId)
+              const subs = cat?.subcategories ?? []
+              if (subs.length === 0) return null
+              return (
+                <div>
+                  <label className="block text-sm font-light text-gray-700 mb-3">Subcategory *</label>
+                  <select
+                    required
+                    value={formData.subCategoryId}
+                    onChange={(e) => setFormData({ ...formData, subCategoryId: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent transition-all font-light"
+                  >
+                    <option value="">Select subcategory</option>
+                    {subs.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Services belong under subcategories</p>
+                </div>
+              )
+            })()}
             <div>
               <label className="block text-sm font-light text-gray-700 mb-3">Service image</label>
               {formData.imageUrl ? (

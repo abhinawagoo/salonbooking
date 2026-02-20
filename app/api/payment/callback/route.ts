@@ -1,78 +1,71 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import crypto from 'crypto'
+import { getPhonePeOrderStatus } from '@/lib/phonepe'
+import { sendInvoiceWhatsApp } from '@/lib/whatsapp-cloud'
 
-export async function POST(request: Request) {
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+// PhonePe PG v2: user is redirected here after payment. We use Order Status API to confirm.
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const bookingId = searchParams.get('bookingId')
+
+  if (!bookingId) {
+    return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  const base = new URL(request.url).origin
+
   try {
-    const body = await request.json()
-    const { response } = body
-
-    // Decode response
-    const decodedResponse = JSON.parse(Buffer.from(response, 'base64').toString('utf-8'))
-    
-    const saltKey = process.env.PHONEPE_SALT_KEY || '099eb0cd-02cf-4e2a-8aca-3e6c6cc41fdb'
-    const saltIndex = process.env.PHONEPE_SALT_INDEX || '1'
-
-    // Verify checksum
-    const checksumString = `/pg/v1/status/${decodedResponse.data.merchantId}/${decodedResponse.data.transactionId}` + saltKey
-    const checksum = crypto.createHash('sha256').update(checksumString).digest('hex') + '###' + saltIndex
-
-    if (checksum !== decodedResponse.checksum) {
-      return NextResponse.json({ error: 'Invalid checksum' }, { status: 400 })
-    }
-
-    // Update payment status and amounts when online payment succeeds
-    const bookingId = decodedResponse.data.merchantUserId
-    const paymentStatus = decodedResponse.code === 'PAYMENT_SUCCESS' ? 'COMPLETED' : 'FAILED'
+    const status = await getPhonePeOrderStatus(bookingId)
+    const state = status?.state?.toUpperCase()
 
     const payment = await prisma.payment.findFirst({
       where: { bookingId },
+      include: { booking: { select: { token: true, user: { select: { name: true, mobile: true } } } } },
     })
     if (!payment) {
-      return NextResponse.json({ error: 'Payment not found' }, { status: 404 })
+      return NextResponse.redirect(`${base}/booking/payment?error=payment_not_found`)
     }
 
-    const paidAmount = paymentStatus === 'COMPLETED' ? payment.amount : 0
-    await prisma.payment.update({
-      where: { id: payment.id },
-      data: {
-        paymentStatus,
-        gatewayReference: decodedResponse.data.transactionId,
-        gatewayResponse: JSON.stringify(decodedResponse),
-        ...(paymentStatus === 'COMPLETED' && {
+    const isSuccess = state === 'COMPLETED' || state === 'PAID'
+    if (isSuccess) {
+      const paidAmount = payment.amount
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          paymentStatus: 'COMPLETED',
+          gatewayReference: status?.orderId ?? undefined,
+          gatewayResponse: JSON.stringify(status),
           amountPaid: { increment: paidAmount },
           onlineAmount: { increment: paidAmount },
-        }),
-      },
-    })
+        },
+      })
+      // Send invoice link to customer via WhatsApp Cloud API (direct, no BSP)
+      const token = payment.booking?.token
+      const user = payment.booking?.user
+      if (token && user?.mobile && process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID) {
+        const invoiceLink = `${APP_URL}/booking/invoice?token=${encodeURIComponent(token)}`
+        sendInvoiceWhatsApp(user.mobile, user.name || 'Customer', invoiceLink).catch((e) =>
+          console.error('Invoice WhatsApp failed:', e)
+        )
+      }
+      return NextResponse.redirect(`${base}/booking/confirmation?bookingId=${bookingId}&payment=completed`)
+    }
 
-    // Return redirect URL
-    const redirectUrl = paymentStatus === 'COMPLETED'
-      ? `/booking/confirmation?bookingId=${bookingId}`
-      : `/booking/payment?error=payment_failed`
+    if (state === 'FAILED' || state === 'CANCELLED' || state === 'EXPIRED') {
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          paymentStatus: 'FAILED',
+          gatewayResponse: JSON.stringify(status),
+        },
+      })
+    }
 
-    return NextResponse.json({ redirectUrl, paymentStatus })
-  } catch (error) {
-    console.error('Error processing payment callback:', error)
-    return NextResponse.json(
-      { error: 'Failed to process payment' },
-      { status: 500 }
-    )
+    return NextResponse.redirect(`${base}/booking/payment?error=payment_failed&bookingId=${bookingId}`)
+  } catch (e) {
+    console.error('Payment callback error:', e)
+    return NextResponse.redirect(`${base}/booking/payment?error=callback_failed&bookingId=${bookingId}`)
   }
-}
-
-export async function GET(request: Request) {
-  // Handle PhonePe redirect
-  const { searchParams } = new URL(request.url)
-  const bookingId = searchParams.get('bookingId')
-  
-  if (bookingId) {
-    // Redirect to confirmation page with bookingId
-    const confirmationUrl = new URL(`/booking/confirmation?bookingId=${bookingId}`, request.url)
-    // Add a flag to indicate payment completion
-    confirmationUrl.searchParams.set('payment', 'completed')
-    return NextResponse.redirect(confirmationUrl)
-  }
-  
-  return NextResponse.redirect(new URL('/', request.url))
 }
