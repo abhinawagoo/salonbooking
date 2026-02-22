@@ -63,7 +63,7 @@ function InvoicePageContent() {
         })
         setInvoiceSettings({
           brandName: settings.brandName,
-          website: settings.invoiceWebsite ?? settings.website,
+          website: settings.invoiceWebsite,
           terms: settings.invoiceTerms ?? 'Goods once sold will not be taken back or exchanged',
         })
       })
