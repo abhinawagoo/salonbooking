@@ -52,4 +52,19 @@ html {
   .print-break {
     page-break-after: always;
   }
+
+  /* Invoice: ensure clean print output */
+  .tax-invoice {
+    box-shadow: none !important;
+  }
+
+  /* Hide nav/footer when printing invoice */
+  body[data-page="invoice"] nav,
+  body[data-page="invoice"] footer {
+    display: none !important;
+  }
+
+  body[data-page="invoice"] main {
+    padding: 0;
+  }
 }

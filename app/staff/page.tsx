@@ -5,7 +5,6 @@ import { format, isToday, isAfter } from 'date-fns'
 import Link from 'next/link'
 import { CheckCircle, Clock, Phone, User, Banknote, Download, Copy, MapPin, BarChart3 } from 'lucide-react'
 import { setUserRole } from '@/lib/auth'
-import { generateInvoicePDF } from '@/lib/generateInvoice'
 
 interface Location {
   id: string
@@ -106,27 +105,17 @@ export default function StaffDashboard() {
     const totalAmount = booking.payment?.totalAmount ?? booking.services.reduce((s, bs) => s + bs.price, 0)
     const amountPaid = booking.payment?.amountPaid ?? 0
     const dueAmount = Math.max(0, totalAmount - amountPaid)
-    let settings: { brandName?: string; invoiceWebsite?: string; invoiceUpiId?: string; invoiceTerms?: string } = {}
+    let settings: { brandName?: string; invoiceWebsite?: string; website?: string; invoiceTerms?: string } = {}
     try {
       settings = await fetch('/api/settings').then((r) => r.json())
     } catch {
       // use defaults
     }
-    let qrDataUrl: string | undefined
-    if (settings.invoiceUpiId) {
-      try {
-        const QRCode = (await import('qrcode')).default
-        const upiUrl = `upi://pay?pa=${settings.invoiceUpiId}&pn=${encodeURIComponent(settings.brandName || 'Salon')}&am=${totalAmount}&tn=Invoice-${booking.token}`
-        qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 120, margin: 1 })
-      } catch {
-        // skip
-      }
-    }
     const payload = {
       bookingToken: booking.token,
       date: new Date(booking.date),
       timeSlot: booking.timeSlot,
-      locationName: booking.location?.name,
+      locationName: booking.location?.name ?? undefined,
       locationAddress: booking.location?.address ?? undefined,
       locationMobile: booking.location?.mobile ?? undefined,
       locationImageUrl: booking.location?.imageUrl ?? undefined,
@@ -141,39 +130,33 @@ export default function StaffDashboard() {
       dueAmount,
       onlineAmount: booking.payment?.onlineAmount ?? 0,
       cashAmount: booking.payment?.cashAmount ?? 0,
-      customerName: booking.user.name,
-      customerMobile: booking.user.mobile,
+      customerName: booking.user?.name ?? undefined,
+      customerMobile: booking.user?.mobile ?? undefined,
       brandName: settings.brandName,
-      website: settings.invoiceWebsite,
-      upiId: settings.invoiceUpiId,
-      terms: settings.invoiceTerms,
-      qrDataUrl,
+      website: settings.invoiceWebsite ?? settings.website,
+      terms: settings.invoiceTerms ?? 'Goods once sold will not be taken back or exchanged',
       invoiceNumber: booking.token,
     }
-    const locationImageUrl = booking.location?.imageUrl
-    if (locationImageUrl) {
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas')
-          canvas.width = img.naturalWidth
-          canvas.height = img.naturalHeight
-          const ctx = canvas.getContext('2d')
-          if (ctx) {
-            ctx.drawImage(img, 0, 0)
-            generateInvoicePDF({ ...payload, locationImageDataUrl: canvas.toDataURL('image/jpeg', 0.9) })
-          } else {
-            generateInvoicePDF(payload)
-          }
-        } catch {
-          generateInvoicePDF(payload)
-        }
+    try {
+      const res = await fetch('/api/invoice/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to generate PDF')
       }
-      img.onerror = () => generateInvoicePDF(payload)
-      img.src = locationImageUrl
-    } else {
-      generateInvoicePDF(payload)
+      const blob = await res.blob()
+      const filename = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? `Tax-Invoice-${booking.token}.pdf`
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to download PDF')
     }
   }
 

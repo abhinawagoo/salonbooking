@@ -84,6 +84,9 @@ export default function Footer() {
               <Link href="/booking/location" className="text-gray-600 hover:text-gray-900">
                 Book Appointment
               </Link>
+              <Link href="/terms" className="text-gray-600 hover:text-gray-900">
+                Terms &amp; Conditions
+              </Link>
             </nav>
           )}
         </div>
@@ -156,6 +159,10 @@ export default function Footer() {
             Copyright 2017–2025 © {BRAND_NAME} | {WEBSITE_URL.replace(/^https?:\/\//, '')}
           </p>
           <p className="mt-1">
+            <Link href="/terms" className="hover:text-gray-700 underline">
+              Terms &amp; Conditions
+            </Link>
+            {' · '}
             Powered by {BRAND_NAME}
           </p>
         </div>

@@ -1,9 +1,11 @@
 import { jsPDF } from 'jspdf'
 import { format } from 'date-fns'
 import { numberToWords } from './numberToWords'
+import { formatCurrencyPdf } from './currency'
 
-const SAC_CODE = '9984' // Personal care / beauty services
-const GST_RATE = 0.18 // 18%
+const SAC_CODE = '9984'
+const GST_RATE = 0.18
+const DEFAULT_TERMS = 'Goods once sold will not be taken back or exchanged'
 
 interface Service {
   id: string
@@ -11,7 +13,7 @@ interface Service {
   price: number
 }
 
-interface InvoiceData {
+export interface InvoiceData {
   bookingToken: string
   date: Date
   timeSlot: string
@@ -29,238 +31,269 @@ interface InvoiceData {
   cashAmount?: number
   customerName?: string
   customerMobile?: string
-  /** Invoice settings */
   brandName?: string
   website?: string
-  upiId?: string
   terms?: string
-  qrDataUrl?: string
   invoiceNumber?: string
 }
 
-function drawGoldenBorder(doc: jsPDF, margin: number) {
-  const pageWidth = doc.internal.pageSize.getWidth()
-  const pageHeight = doc.internal.pageSize.getHeight()
-  const gold: [number, number, number] = [218, 165, 32]
-  doc.setDrawColor(...gold)
-  doc.setLineWidth(0.5)
-  doc.rect(margin, margin, pageWidth - 2 * margin, pageHeight - 2 * margin, 'S')
-}
+const BORDER_COLOR: [number, number, number] = [229, 224, 216] // #E5E0D8
+const HEADER_BG: [number, number, number] = [243, 238, 230] // #F3EEE6
+const BLACK: [number, number, number] = [30, 30, 30]
+const GRAY: [number, number, number] = [100, 100, 100]
 
 export function generateInvoicePDF(data: InvoiceData) {
-  const doc = new jsPDF()
+  const doc = new jsPDF({ putOnlyUsedFonts: true })
   const pageWidth = doc.internal.pageSize.getWidth()
-  const margin = 14
-  let yPos = margin + 4
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 24
+  const sectionSpacing = 20
+  let yPos = margin
 
-  const primaryColor: [number, number, number] = [0, 0, 0]
-  const grayColor: [number, number, number] = [100, 100, 100]
-  const highlightColor: [number, number, number] = [255, 255, 220] // pale yellow
-  const goldColor: [number, number, number] = [218, 165, 32]
+  /** Add new page if content would overflow; draw border on current page before leaving. */
+  const checkPageBreak = (spaceNeeded: number, onNewPage?: () => void): void => {
+    if (yPos + spaceNeeded > pageHeight - margin) {
+      doc.setDrawColor(...BORDER_COLOR)
+      doc.setLineWidth(0.5)
+      doc.rect(margin, margin, pageWidth - 2 * margin, pageHeight - 2 * margin, 'S')
+      doc.addPage()
+      yPos = margin
+      onNewPage?.()
+    }
+  }
+
+  const tableWidth = pageWidth - 2 * margin
+  const cellPad = 8
+  const rowH = 12
+  const lineHeight = 5
+  // Column widths: No 5%, Services 35%, SAC 10%, Qty 10%, Rate 14%, Tax 14%, Total 12%
+  const colNo = tableWidth * 0.05
+  const colServices = tableWidth * 0.35
+  const colSAC = tableWidth * 0.10
+  const colQty = tableWidth * 0.10
+  const colRate = tableWidth * 0.14
+  const colTax = tableWidth * 0.14
+  const colTotal = tableWidth * 0.12
+  const colX = {
+    no: margin,
+    services: margin + colNo,
+    sac: margin + colNo + colServices,
+    qty: margin + colNo + colServices + colSAC,
+    rate: margin + colNo + colServices + colSAC + colQty,
+    tax: margin + colNo + colServices + colSAC + colQty + colRate,
+    total: margin + colNo + colServices + colSAC + colQty + colRate + colTax,
+  }
+
+  /** Repeat table header on new page (for continuation). */
+  const drawTableHeader = (): void => {
+    doc.setFillColor(...HEADER_BG)
+    doc.setDrawColor(...BORDER_COLOR)
+    doc.rect(margin, yPos, tableWidth, rowH, 'FD')
+    doc.rect(margin, yPos, tableWidth, rowH, 'S')
+    doc.setTextColor(...BLACK)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text('No', colX.no + cellPad / 2, yPos + 8)
+    doc.text('Services', colX.services + cellPad / 2, yPos + 8)
+    doc.text('SAC', colX.sac + cellPad / 2, yPos + 8)
+    doc.text('Qty', colX.qty + cellPad / 2, yPos + 8)
+    doc.text('Rate', colX.rate + colRate - cellPad / 2, yPos + 8, { align: 'right' })
+    doc.text('Tax', colX.tax + colTax - cellPad / 2, yPos + 8, { align: 'right' })
+    doc.text('Total', pageWidth - margin - cellPad / 2, yPos + 8, { align: 'right' })
+    yPos += rowH
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...GRAY)
+  }
 
   const salonName = (data.brandName || data.locationName || 'SALON').toUpperCase()
   const invoiceNo = data.invoiceNumber || data.bookingToken
   const invoiceDate = format(data.date, 'dd/MM/yyyy')
+  const terms = data.terms || DEFAULT_TERMS
 
-  // ----- Header: Logo (left) + Salon details -----
+  // ----- HEADER -----
   const hasLogo = data.locationImageDataUrl && data.locationImageDataUrl.startsWith('data:image/')
   if (hasLogo && data.locationImageDataUrl) {
     try {
       const fmt = data.locationImageDataUrl.match(/^data:image\/(\w+);/)?.[1] === 'jpeg' ? 'JPEG' : 'PNG'
-      doc.addImage(data.locationImageDataUrl, fmt, margin, yPos, 24, 24)
+      doc.addImage(data.locationImageDataUrl, fmt, margin, yPos, 32, 32)
     } catch {
       // skip
     }
   }
 
-  const leftX = hasLogo ? margin + 28 : margin
-  doc.setTextColor(...primaryColor)
-  doc.setFontSize(18)
+  const leftX = hasLogo ? margin + 36 : margin
+  doc.setTextColor(...BLACK)
+  doc.setFontSize(22)
   doc.setFont('helvetica', 'bold')
-  doc.text(salonName, leftX, yPos + 10)
-  doc.setFontSize(9)
+  doc.text(salonName, leftX, yPos + 14)
+  doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
-  doc.setTextColor(...grayColor)
-  let lineY = yPos + 16
+  doc.setTextColor(...GRAY)
+  let lineY = yPos + 20
   if (data.locationMobile) {
     doc.text(data.locationMobile, leftX, lineY)
-    lineY += 5
+    lineY += 6
   }
   if (data.locationAddress) {
     doc.text(data.locationAddress, leftX, lineY)
-    lineY += 5
+    lineY += 6
   }
   if (data.website) {
     doc.text(data.website, leftX, lineY)
-    lineY += 5
+    lineY += 6
   }
 
-  // ----- TAX INVOICE (right) -----
-  doc.setTextColor(...primaryColor)
-  doc.setFontSize(14)
+  doc.setTextColor(...BLACK)
+  doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
-  doc.text('TAX INVOICE', pageWidth - margin, yPos + 6, { align: 'right' })
-  doc.setFontSize(9)
+  doc.text('TAX INVOICE', pageWidth - margin, yPos + 10, { align: 'right' })
+
+  const infoRowSpacing = Math.round(sectionSpacing * 0.4) // 60% reduction
+  yPos = Math.max(lineY, yPos + 36) + infoRowSpacing
+
+  // ----- INFO ROW -----
+  doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
-  doc.text(`Invoice No.: ${invoiceNo}`, pageWidth - margin, yPos + 12, { align: 'right' })
-  doc.text(`Invoice Date: ${invoiceDate}`, pageWidth - margin, yPos + 17, { align: 'right' })
+  doc.setTextColor(...BLACK)
+  doc.text(`Invoice No: ${invoiceNo}`, margin, yPos)
+  doc.text(`Invoice Date: ${invoiceDate}`, pageWidth - margin, yPos, { align: 'right' })
+  yPos += infoRowSpacing
 
-  yPos = Math.max(lineY, yPos + 22) + 8
+  // ----- BILL TO BOX -----
+  checkPageBreak(40)
+  doc.setDrawColor(...BORDER_COLOR)
+  doc.setFillColor(250, 250, 249)
+  doc.rect(margin, yPos, pageWidth - 2 * margin, 32, 'FD')
+  doc.setTextColor(...BLACK)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.text('Bill To', margin + 10, yPos + 10)
+  doc.setFont('helvetica', 'normal')
+  if (data.customerName) doc.text(data.customerName, margin + 10, yPos + 18)
+  if (data.customerMobile) doc.text(`Mobile: ${data.customerMobile}`, margin + 10, yPos + 25)
+  yPos += 40
 
-  // ----- Bill To -----
-  doc.setFillColor(...highlightColor)
-  doc.rect(margin, yPos, pageWidth - 2 * margin, 10, 'F')
-  doc.setTextColor(...primaryColor)
+  // ----- TABLE -----
+  checkPageBreak(rowH) // only break if we can't fit the header
+  doc.setFillColor(...HEADER_BG)
+  doc.setDrawColor(...BORDER_COLOR)
+  doc.rect(margin, yPos, tableWidth, rowH, 'FD')
+  doc.rect(margin, yPos, tableWidth, rowH, 'S')
+  doc.setTextColor(...BLACK)
   doc.setFontSize(10)
   doc.setFont('helvetica', 'bold')
-  doc.text('Bill To', margin + 4, yPos + 7)
-  yPos += 14
-  doc.setFont('helvetica', 'normal')
-  if (data.customerName) doc.text(data.customerName, margin + 4, yPos)
-  yPos += 5
-  if (data.customerMobile) doc.text(`Mobile: ${data.customerMobile}`, margin + 4, yPos)
-  yPos += 12
-
-  // ----- Services Table -----
-  doc.setFillColor(...highlightColor)
-  doc.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
-  doc.setTextColor(...primaryColor)
-  doc.setFontSize(9)
-  doc.setFont('helvetica', 'bold')
-  const colNo = margin + 4
-  const colSvc = margin + 14
-  const colSac = margin + 75
-  const colQty = margin + 95
-  const colRate = margin + 115
-  const colTax = margin + 135
-  const colTotal = pageWidth - margin - 4
-  doc.text('No', colNo, yPos + 6)
-  doc.text('SERVICES', colSvc, yPos + 6)
-  doc.text('SAC', colSac, yPos + 6)
-  doc.text('Qty.', colQty, yPos + 6)
-  doc.text('Rate', colRate, yPos + 6)
-  doc.text('Tax', colTax, yPos + 6)
-  doc.text('Total', colTotal, yPos + 6, { align: 'right' })
-  yPos += 10
+  doc.text('No', colX.no + cellPad / 2, yPos + 8)
+  doc.text('Services', colX.services + cellPad / 2, yPos + 8)
+  doc.text('SAC', colX.sac + cellPad / 2, yPos + 8)
+  doc.text('Qty', colX.qty + cellPad / 2, yPos + 8)
+  doc.text('Rate', colX.rate + colRate - cellPad / 2, yPos + 8, { align: 'right' })
+  doc.text('Tax', colX.tax + colTax - cellPad / 2, yPos + 8, { align: 'right' })
+  doc.text('Total', pageWidth - margin - cellPad / 2, yPos + 8, { align: 'right' })
+  yPos += rowH
 
   let totalTaxable = 0
   let totalTax = 0
-  let totalAmount = 0
 
   doc.setFont('helvetica', 'normal')
-  doc.setTextColor(...grayColor)
+  doc.setTextColor(...GRAY)
   data.services.forEach((svc, i) => {
+    const svcLines = doc.splitTextToSize(svc.name, colServices - cellPad)
+    const actualRowH = Math.max(rowH, 6 + svcLines.length * lineHeight)
+    checkPageBreak(actualRowH, drawTableHeader)
     const price = svc.price
     const taxable = Math.round((price / (1 + GST_RATE)) * 100) / 100
     const tax = Math.round((price - taxable) * 100) / 100
     totalTaxable += taxable
     totalTax += tax
-    totalAmount += price
 
-    doc.text(String(i + 1), colNo, yPos + 4)
-    doc.text(svc.name.length > 22 ? svc.name.slice(0, 22) + '..' : svc.name, colSvc, yPos + 4)
-    doc.text(SAC_CODE, colSac, yPos + 4)
-    doc.text('1 PCS', colQty, yPos + 4)
-    doc.text(taxable.toFixed(2), colRate, yPos + 4)
-    doc.text(`${tax.toFixed(2)} (18%)`, colTax, yPos + 4)
-    doc.text(price.toFixed(0), colTotal, yPos + 4, { align: 'right' })
-    yPos += 6
+    doc.setDrawColor(...BORDER_COLOR)
+    doc.line(margin, yPos, pageWidth - margin, yPos)
+    const cellCenterY = yPos + actualRowH / 2 - 2
+    doc.text(String(i + 1), colX.no + cellPad / 2, cellCenterY)
+    doc.text(svcLines, colX.services + cellPad / 2, yPos + 5)
+    doc.text(SAC_CODE, colX.sac + cellPad / 2, cellCenterY)
+    doc.text('1 PCS', colX.qty + cellPad / 2, cellCenterY)
+    doc.text(formatCurrencyPdf(taxable), colX.rate + colRate - cellPad / 2, cellCenterY, { align: 'right' })
+    doc.text(formatCurrencyPdf(tax), colX.tax + colTax - cellPad / 2, cellCenterY, { align: 'right' })
+    doc.text(formatCurrencyPdf(price, 0), pageWidth - margin - cellPad / 2, cellCenterY, { align: 'right' })
+    yPos += actualRowH
   })
 
-  yPos += 6
+  doc.setDrawColor(...BORDER_COLOR)
+  doc.line(margin, yPos, pageWidth - margin, yPos)
+  yPos += 4
 
-  // ----- Summary -----
+  // ----- SUBTOTAL ROW -----
+  checkPageBreak(rowH + 20)
+  doc.setFillColor(...HEADER_BG)
+  doc.rect(margin, yPos, tableWidth, rowH - 2, 'FD')
+  doc.rect(margin, yPos, tableWidth, rowH - 2, 'S')
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...BLACK)
+  doc.text('SUBTOTAL', margin + cellPad / 2, yPos + 6)
+  doc.text(formatCurrencyPdf(totalTax), colX.tax + colTax - cellPad / 2, yPos + 6, { align: 'right' })
+  doc.text(formatCurrencyPdf(data.totalAmount, 0), pageWidth - margin - cellPad / 2, yPos + 6, { align: 'right' })
+  yPos += rowH + sectionSpacing
+
+  // ----- BOTTOM GRID: Terms (left) | Totals (right) -----
+  checkPageBreak(85) // only break when truly needed (exact content height)
   const amountPaid = data.amountPaid ?? 0
   const dueAmount = data.dueAmount ?? Math.max(0, data.totalAmount - amountPaid)
-
-  doc.setFillColor(...highlightColor)
-  doc.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
-  doc.setTextColor(...primaryColor)
-  doc.setFont('helvetica', 'bold')
-  doc.text('SUBTOTAL', margin + 4, yPos + 6)
-  doc.text(`₹ ${totalTax.toFixed(2)}`, colTax, yPos + 6)
-  doc.text(`₹ ${totalAmount.toFixed(0)}`, colTotal, yPos + 6, { align: 'right' })
-  yPos += 12
-
-  doc.setFont('helvetica', 'normal')
-  doc.text('Taxable Amount', margin + 4, yPos + 4)
-  doc.text(`₹ ${totalTaxable.toFixed(2)}`, colTotal, yPos + 4, { align: 'right' })
-  yPos += 6
-  doc.text('CGST @9%', margin + 4, yPos + 4)
-  doc.text(`₹ ${(totalTaxable * 0.09).toFixed(2)}`, colTotal, yPos + 4, { align: 'right' })
-  yPos += 6
-  doc.text('SGST @9%', margin + 4, yPos + 4)
-  doc.text(`₹ ${(totalTaxable * 0.09).toFixed(2)}`, colTotal, yPos + 4, { align: 'right' })
-  yPos += 8
-
-  doc.setFillColor(...highlightColor)
-  doc.rect(margin, yPos, pageWidth - 2 * margin, 10, 'F')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(11)
-  doc.text('Total Amount', margin + 4, yPos + 7)
-  doc.text(`₹ ${data.totalAmount.toFixed(0)}`, colTotal, yPos + 7, { align: 'right' })
-  yPos += 14
+  const totalsBoxWidth = 90
+  const totalsBoxX = pageWidth - margin - totalsBoxWidth
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
-  doc.text('Received Amount', margin + 4, yPos + 4)
-  doc.text(`₹ ${amountPaid.toFixed(0)}`, colTotal, yPos + 4, { align: 'right' })
-  yPos += 6
-  doc.text('Balance', margin + 4, yPos + 4)
-  doc.text(`₹ ${dueAmount.toFixed(0)}`, colTotal, yPos + 4, { align: 'right' })
-  yPos += 6
-  doc.text('Previous Balance', margin + 4, yPos + 4)
-  doc.text('₹ 0', colTotal, yPos + 4, { align: 'right' })
-  yPos += 6
-  doc.text('Current Balance', margin + 4, yPos + 4)
-  doc.text('₹ 0', colTotal, yPos + 4, { align: 'right' })
-  yPos += 14
-
-  // ----- Payment QR + UPI -----
-  if (data.qrDataUrl && data.qrDataUrl.startsWith('data:image/')) {
-    try {
-      doc.addImage(data.qrDataUrl, 'PNG', margin, yPos, 28, 28)
-    } catch {
-      // skip
-    }
-    doc.setFontSize(8)
-    doc.text('Payment QR Code', margin, yPos + 32)
-  }
-  if (data.upiId) {
-    const qrRight = (data.qrDataUrl ? margin + 32 : margin)
-    doc.setFontSize(9)
-    doc.text('UPI ID:', qrRight, yPos + 8)
-    doc.text(data.upiId, qrRight, yPos + 14)
-  }
-  yPos += (data.qrDataUrl || data.upiId) ? 38 : 0
-
-  // ----- Terms -----
-  if (data.terms) {
-    doc.setFontSize(8)
-    doc.setTextColor(...grayColor)
-    doc.text('Terms & Conditions:', margin, yPos + 4)
-    doc.text(data.terms, margin, yPos + 10)
-    yPos += 18
-  }
-
-  // ----- Amount in words -----
-  doc.setTextColor(...primaryColor)
-  doc.setFontSize(9)
-  doc.text('Total Amount (in words):', margin, yPos + 4)
-  doc.setFont('helvetica', 'bold')
-  doc.text(numberToWords(data.totalAmount), margin, yPos + 10)
-  yPos += 18
-
-  // ----- Signature -----
-  doc.setDrawColor(...grayColor)
-  doc.rect(pageWidth - margin - 45, yPos, 45, 20, 'S')
-  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(...GRAY)
+  doc.text('Terms & Conditions', margin, yPos)
   doc.setFontSize(8)
-  doc.text(`Signature ${salonName}`, pageWidth - margin - 42, yPos + 16)
+  const termsLines = doc.splitTextToSize(terms, 95)
+  doc.text(termsLines, margin, yPos + 6)
 
-  // Golden border
-  drawGoldenBorder(doc, margin)
+  doc.setDrawColor(...BORDER_COLOR)
+  doc.setFillColor(250, 250, 249)
+  doc.rect(totalsBoxX, yPos - 4, totalsBoxWidth, 72, 'FD')
+  doc.rect(totalsBoxX, yPos - 4, totalsBoxWidth, 72, 'S')
+  doc.setTextColor(...BLACK)
+  doc.setFontSize(9)
+  doc.text('Taxable Amount', totalsBoxX + 4, yPos + 4)
+  doc.text(formatCurrencyPdf(totalTaxable), totalsBoxX + totalsBoxWidth - 4, yPos + 4, { align: 'right' })
+  doc.text('CGST @9%', totalsBoxX + 4, yPos + 11)
+  doc.text(formatCurrencyPdf(totalTaxable * 0.09), totalsBoxX + totalsBoxWidth - 4, yPos + 11, { align: 'right' })
+  doc.text('SGST @9%', totalsBoxX + 4, yPos + 18)
+  doc.text(formatCurrencyPdf(totalTaxable * 0.09), totalsBoxX + totalsBoxWidth - 4, yPos + 18, { align: 'right' })
+  doc.setFont('helvetica', 'bold')
+  doc.text('Total Amount', totalsBoxX + 4, yPos + 27)
+  doc.text(formatCurrencyPdf(data.totalAmount, 0), totalsBoxX + totalsBoxWidth - 4, yPos + 27, { align: 'right' })
+  doc.setFont('helvetica', 'normal')
+  doc.text('Received Amount', totalsBoxX + 4, yPos + 34)
+  doc.text(formatCurrencyPdf(amountPaid, 0), totalsBoxX + totalsBoxWidth - 4, yPos + 34, { align: 'right' })
+  doc.text('Balance', totalsBoxX + 4, yPos + 41)
+  doc.text(formatCurrencyPdf(dueAmount, 0), totalsBoxX + totalsBoxWidth - 4, yPos + 41, { align: 'right' })
+  doc.text('Amount (in words):', totalsBoxX + 4, yPos + 50)
+  doc.setFontSize(7)
+  const words = numberToWords(data.totalAmount)
+  const wordsLines = doc.splitTextToSize(words, totalsBoxWidth - 8)
+  doc.text(wordsLines, totalsBoxX + 4, yPos + 56)
+
+  yPos += 85
+
+  // ----- SIGNATURE BOX -----
+  checkPageBreak(60)
+  const sigW = 50
+  const sigH = 28
+  doc.setDrawColor(...BORDER_COLOR)
+  doc.rect(pageWidth - margin - sigW, yPos, sigW, sigH, 'S')
+  doc.setFontSize(8)
+  doc.text('Signature', pageWidth - margin - sigW + 4, yPos + 10)
+  doc.text(salonName, pageWidth - margin - sigW + 4, yPos + 20)
+
+  // Outer border
+  doc.setDrawColor(...BORDER_COLOR)
+  doc.setLineWidth(0.5)
+  doc.rect(margin, margin, pageWidth - 2 * margin, pageHeight - 2 * margin, 'S')
 
   const filename = `Tax-Invoice-${invoiceNo}-${format(data.date, 'yyyyMMdd')}.pdf`
-  doc.save(filename)
+  const buffer = doc.output('arraybuffer') as ArrayBuffer
+  return { buffer, filename }
 }

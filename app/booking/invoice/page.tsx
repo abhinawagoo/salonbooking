@@ -2,11 +2,9 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Download, Calendar, CreditCard, FileText, MapPin } from 'lucide-react'
+import { Download, FileText, Printer } from 'lucide-react'
 import { format } from 'date-fns'
-import QRCode from 'qrcode'
-import { generateInvoicePDF } from '@/lib/generateInvoice'
-import { numberToWords } from '@/lib/numberToWords'
+import TaxInvoice from '@/components/TaxInvoice'
 
 interface Service {
   id: string
@@ -36,7 +34,13 @@ function InvoicePageContent() {
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [invoiceSettings, setInvoiceSettings] = useState<{ brandName?: string; website?: string; upiId?: string; terms?: string }>({})
+  const [invoiceSettings, setInvoiceSettings] = useState<{ brandName?: string; website?: string; terms?: string }>({})
+  const [downloading, setDownloading] = useState(false)
+
+  useEffect(() => {
+    document.body.dataset.page = 'invoice'
+    return () => { delete document.body.dataset.page }
+  }, [])
 
   useEffect(() => {
     const token = searchParams.get('token')
@@ -60,8 +64,7 @@ function InvoicePageContent() {
         setInvoiceSettings({
           brandName: settings.brandName,
           website: settings.invoiceWebsite ?? settings.website,
-          upiId: settings.invoiceUpiId,
-          terms: settings.invoiceTerms,
+          terms: settings.invoiceTerms ?? 'Goods once sold will not be taken back or exchanged',
         })
       })
       .catch((e) => setError(e.message || 'Something went wrong'))
@@ -70,64 +73,29 @@ function InvoicePageContent() {
 
   const handleDownloadBill = async () => {
     if (!bookingData) return
-    const date = typeof bookingData.date === 'string' ? new Date(bookingData.date) : new Date(bookingData.date)
-    let qrDataUrl: string | undefined
-    if (invoiceSettings.upiId) {
-      try {
-        const upiUrl = `upi://pay?pa=${invoiceSettings.upiId}&pn=${encodeURIComponent(invoiceSettings.brandName || 'Salon')}&am=${bookingData.totalAmount}&tn=Invoice-${bookingData.token}`
-        qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 120, margin: 1 })
-      } catch {
-        // skip QR
+    setDownloading(true)
+    try {
+      const res = await fetch('/api/invoice/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingToken: bookingData.token }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to generate PDF')
       }
-    }
-    const payload = {
-      bookingToken: bookingData.token,
-      date,
-      timeSlot: bookingData.timeSlot,
-      locationName: bookingData.locationName,
-      locationAddress: bookingData.locationAddress,
-      locationMobile: bookingData.locationMobile,
-      locationImageUrl: bookingData.locationImageUrl,
-      services: bookingData.services,
-      paymentStatus: bookingData.paymentStatus,
-      totalAmount: bookingData.totalAmount,
-      amountPaid: bookingData.amountPaid,
-      dueAmount: bookingData.dueAmount,
-      onlineAmount: bookingData.onlineAmount,
-      cashAmount: bookingData.cashAmount,
-      customerName: bookingData.customerName,
-      customerMobile: bookingData.customerMobile,
-      brandName: invoiceSettings.brandName,
-      website: invoiceSettings.website,
-      upiId: invoiceSettings.upiId,
-      terms: invoiceSettings.terms,
-      qrDataUrl,
-      invoiceNumber: bookingData.token,
-    }
-    if (bookingData.locationImageUrl) {
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas')
-          canvas.width = img.naturalWidth
-          canvas.height = img.naturalHeight
-          const ctx = canvas.getContext('2d')
-          if (ctx) {
-            ctx.drawImage(img, 0, 0)
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
-            generateInvoicePDF({ ...payload, locationImageDataUrl: dataUrl })
-          } else {
-            generateInvoicePDF(payload)
-          }
-        } catch {
-          generateInvoicePDF(payload)
-        }
-      }
-      img.onerror = () => generateInvoicePDF(payload)
-      img.src = bookingData.locationImageUrl
-    } else {
-      generateInvoicePDF(payload)
+      const blob = await res.blob()
+      const filename = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? `Tax-Invoice-${bookingData.token}.pdf`
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to download PDF')
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -161,116 +129,48 @@ function InvoicePageContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-6">
+      <div className="max-w-[800px] mx-auto">
+        <div className="text-center mb-6 print:hidden">
           <h1 className="text-2xl font-bold text-gray-900">Your booking & bill</h1>
           <p className="text-gray-600 mt-1">View details and download your bill</p>
-          <button
-            onClick={handleDownloadBill}
-            className="mt-4 bg-black text-white px-6 py-3 rounded-full font-light hover:bg-gray-800 transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl mx-auto"
-          >
-            <Download size={18} />
-            Generate / Download bill
-          </button>
-        </div>
-
-        {/* Tax Invoice preview - matches PDF format */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden border-2 border-amber-200/60">
-          <div className="p-6 space-y-4">
-            {/* Header */}
-            <div className="flex justify-between items-start gap-4">
-              <div className="flex gap-3">
-                {bookingData.locationImageUrl && (
-                  <img src={bookingData.locationImageUrl} alt="" className="w-16 h-16 rounded-lg object-cover" />
-                )}
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900 uppercase">{(invoiceSettings.brandName || bookingData.locationName || 'SALON')}</h2>
-                  {bookingData.locationMobile && <p className="text-sm text-gray-600">{bookingData.locationMobile}</p>}
-                  {bookingData.locationAddress && <p className="text-sm text-gray-500">{bookingData.locationAddress}</p>}
-                  {invoiceSettings.website && <p className="text-sm text-gray-500">{invoiceSettings.website}</p>}
-                </div>
-              </div>
-              <div className="text-right">
-                <h3 className="text-base font-bold text-gray-900">TAX INVOICE</h3>
-                <p className="text-sm text-gray-600">Invoice No.: {bookingData.token}</p>
-                <p className="text-sm text-gray-600">Invoice Date: {format(dateObj, 'dd/MM/yyyy')}</p>
-              </div>
-            </div>
-
-            {/* Bill To */}
-            <div className="bg-amber-50/80 rounded p-3">
-              <p className="text-xs font-bold text-gray-700 mb-1">Bill To</p>
-              <p className="font-medium">{bookingData.customerName}</p>
-              <p className="text-sm text-gray-600">Mobile: {bookingData.customerMobile}</p>
-            </div>
-
-            {/* Services table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-amber-50/80">
-                    <th className="text-left py-2 px-2">No</th>
-                    <th className="text-left py-2 px-2">SERVICES</th>
-                    <th className="text-left py-2 px-2">SAC</th>
-                    <th className="text-left py-2 px-2">Qty.</th>
-                    <th className="text-right py-2 px-2">Rate</th>
-                    <th className="text-right py-2 px-2">Tax</th>
-                    <th className="text-right py-2 px-2">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookingData.services.map((s, i) => {
-                    const taxable = Math.round((s.price / 1.18) * 100) / 100
-                    const tax = Math.round((s.price - taxable) * 100) / 100
-                    return (
-                      <tr key={s.id} className="border-t border-gray-100">
-                        <td className="py-2 px-2">{i + 1}</td>
-                        <td className="py-2 px-2">{s.name}</td>
-                        <td className="py-2 px-2">9984</td>
-                        <td className="py-2 px-2">1 PCS</td>
-                        <td className="py-2 px-2 text-right">{taxable.toFixed(2)}</td>
-                        <td className="py-2 px-2 text-right">{tax.toFixed(2)} (18%)</td>
-                        <td className="py-2 px-2 text-right font-medium">₹{s.price}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Summary */}
-            <div className="bg-amber-50/80 rounded p-3 space-y-1">
-              <div className="flex justify-between text-sm">
-                <span>Total Amount</span>
-                <span className="font-bold">₹{bookingData.totalAmount}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Received Amount</span>
-                <span>₹{bookingData.amountPaid}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Balance</span>
-                <span>₹{bookingData.dueAmount}</span>
-              </div>
-            </div>
-
-            {invoiceSettings.terms && (
-              <p className="text-xs text-gray-500">Terms & Conditions: {invoiceSettings.terms}</p>
-            )}
-
-            <div className="flex justify-between items-end pt-4 border-t">
-              <div>
-                <p className="text-xs text-gray-500">Amount in words</p>
-                <p className="text-sm font-medium">{numberToWords(bookingData.totalAmount)}</p>
-              </div>
-              {invoiceSettings.upiId && (
-                <div className="text-right text-xs text-gray-500">
-                  <p>UPI ID: {invoiceSettings.upiId}</p>
-                </div>
-              )}
-            </div>
+          <div className="flex flex-wrap justify-center gap-3 mt-4">
+            <button
+              onClick={handleDownloadBill}
+              disabled={downloading}
+              className="bg-black text-white px-6 py-3 rounded-full font-light hover:bg-gray-800 transition-all duration-200 flex items-center gap-2 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              <Download size={18} />
+              {downloading ? 'Generating...' : 'Download PDF'}
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-full font-light hover:bg-gray-50 transition-all duration-200 flex items-center gap-2"
+            >
+              <Printer size={18} />
+              Print
+            </button>
           </div>
         </div>
+
+        {/* Tax Invoice - clean professional layout, A4 optimized for print */}
+        <TaxInvoice
+          data={{
+            salonName: (invoiceSettings.brandName || bookingData.locationName || 'SALON').toUpperCase(),
+            phone: bookingData.locationMobile ?? undefined,
+            address: bookingData.locationAddress ?? undefined,
+            website: invoiceSettings.website ?? undefined,
+            logoUrl: bookingData.locationImageUrl ?? undefined,
+            invoiceNo: bookingData.token,
+            invoiceDate: format(dateObj, 'dd/MM/yyyy'),
+            customerName: bookingData.customerName ?? undefined,
+            customerMobile: bookingData.customerMobile ?? undefined,
+            services: bookingData.services,
+            totalAmount: bookingData.totalAmount,
+            amountPaid: bookingData.amountPaid,
+            dueAmount: bookingData.dueAmount,
+            terms: invoiceSettings.terms,
+          }}
+        />
       </div>
     </div>
   )

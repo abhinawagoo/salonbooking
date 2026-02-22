@@ -277,24 +277,15 @@ export default function AdminCustomizePage() {
             <p className="text-sm text-gray-500 mb-4">Shown on downloaded bills and invoices sent to customers.</p>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Website (below address on invoice)</label>
                 <input
                   type="text"
                   value={settings.invoiceWebsite}
                   onChange={(e) => setSettings((s) => ({ ...s, invoiceWebsite: e.target.value }))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="e.g. www.sasaramshahnazsalon.com"
+                  placeholder="e.g. www.sasaramshahnazsalon.com or https://yoursalon.com"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">UPI ID (for payment QR)</label>
-                <input
-                  type="text"
-                  value={settings.invoiceUpiId}
-                  onChange={(e) => setSettings((s) => ({ ...s, invoiceUpiId: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="e.g. paytmqr5cm6g0@ptys"
-                />
+                <p className="text-xs text-gray-500 mt-1">Shown below phone and address on the invoice header.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Terms & Conditions</label>

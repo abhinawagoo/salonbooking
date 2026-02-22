@@ -1,10 +1,11 @@
 'use client'
 
-import { CheckCircle, Calendar, Clock, CreditCard, Download, Printer, Home } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { CheckCircle, Download, Printer, Home, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import { useRouter } from 'next/navigation'
-import QRCode from 'qrcode'
-import { generateInvoicePDF } from '@/lib/generateInvoice'
+import TaxInvoice from '@/components/TaxInvoice'
 
 interface Service {
   id: string
@@ -52,70 +53,72 @@ export default function ConfirmationScreen({
   redirectCountdown
 }: ConfirmationScreenProps) {
   const router = useRouter()
+  const [invoiceSettings, setInvoiceSettings] = useState<{ brandName?: string; website?: string; terms?: string }>({})
+  const [downloading, setDownloading] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((r) => r.json())
+      .then((s) => setInvoiceSettings({
+        brandName: s.brandName,
+        website: s.invoiceWebsite ?? s.website,
+        terms: s.invoiceTerms ?? 'Goods once sold will not be taken back or exchanged',
+      }))
+      .catch(() => {})
+  }, [])
 
   const handleDownloadInvoice = async () => {
-    let settings: { brandName?: string; invoiceWebsite?: string; invoiceUpiId?: string; invoiceTerms?: string } = {}
+    setDownloading(true)
     try {
-      settings = await fetch('/api/settings').then((r) => r.json())
-    } catch {
-      // use defaults
-    }
-    let qrDataUrl: string | undefined
-    if (settings.invoiceUpiId) {
+      let settings: { brandName?: string; invoiceWebsite?: string; invoiceTerms?: string } = {}
       try {
-        const upiUrl = `upi://pay?pa=${settings.invoiceUpiId}&pn=${encodeURIComponent(settings.brandName || 'Salon')}&am=${totalAmount}&tn=Invoice-${bookingToken}`
-        qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 120, margin: 1 })
+        settings = await fetch('/api/settings').then((r) => r.json())
       } catch {
-        // skip
+        // use defaults
       }
-    }
-    const payload = {
-      bookingToken,
-      date,
-      timeSlot,
-      services,
-      paymentStatus,
-      totalAmount,
-      amountPaid,
-      dueAmount,
-      onlineAmount,
-      cashAmount,
-      customerName,
-      customerMobile,
-      locationName,
-      locationAddress,
-      locationMobile,
-      locationImageUrl,
-      brandName: settings.brandName,
-      website: settings.invoiceWebsite,
-      upiId: settings.invoiceUpiId,
-      terms: settings.invoiceTerms,
-      qrDataUrl,
-      invoiceNumber: bookingToken,
-    }
-    if (locationImageUrl) {
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas')
-          canvas.width = img.naturalWidth
-          canvas.height = img.naturalHeight
-          const ctx = canvas.getContext('2d')
-          if (ctx) {
-            ctx.drawImage(img, 0, 0)
-            generateInvoicePDF({ ...payload, locationImageDataUrl: canvas.toDataURL('image/jpeg', 0.9) })
-          } else {
-            generateInvoicePDF(payload)
-          }
-        } catch {
-          generateInvoicePDF(payload)
-        }
+      const payload = {
+        bookingToken,
+        date: date instanceof Date ? date : new Date(date as string),
+        timeSlot,
+        services,
+        paymentStatus,
+        totalAmount,
+        amountPaid,
+        dueAmount,
+        onlineAmount,
+        cashAmount,
+        customerName,
+        customerMobile,
+        locationName,
+        locationAddress,
+        locationMobile,
+        locationImageUrl,
+        brandName: settings.brandName,
+        website: settings.invoiceWebsite ?? settings.website,
+        terms: settings.invoiceTerms ?? 'Goods once sold will not be taken back or exchanged',
+        invoiceNumber: bookingToken,
       }
-      img.onerror = () => generateInvoicePDF(payload)
-      img.src = locationImageUrl
-    } else {
-      generateInvoicePDF(payload)
+      const res = await fetch('/api/invoice/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to generate PDF')
+      }
+      const blob = await res.blob()
+      const filename = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? `Tax-Invoice-${bookingToken}.pdf`
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to download PDF')
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -129,7 +132,7 @@ export default function ConfirmationScreen({
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="text-center py-8 no-print">
+      <div className="text-center py-8 print:hidden">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-4">
           <CheckCircle className="text-green-600" size={48} />
         </div>
@@ -143,10 +146,11 @@ export default function ConfirmationScreen({
         <div className="mt-6 flex flex-wrap items-center gap-3 justify-center">
           <button
             onClick={handleDownloadInvoice}
-            className="bg-black text-white px-6 py-3 rounded-full font-light hover:bg-gray-800 transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl"
+            disabled={downloading}
+            className="bg-black text-white px-6 py-3 rounded-full font-light hover:bg-gray-800 transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
           >
             <Download size={18} />
-            Download Invoice
+            {downloading ? 'Generating...' : 'Download Invoice'}
           </button>
           <button
             onClick={handlePrint}
@@ -155,6 +159,13 @@ export default function ConfirmationScreen({
             <Printer size={18} />
             Print
           </button>
+          <Link
+            href={`/booking/invoice?token=${encodeURIComponent(bookingToken)}`}
+            className="bg-gray-100 text-gray-800 border border-gray-300 px-6 py-3 rounded-full font-light hover:bg-gray-200 transition-all duration-200 flex items-center gap-2"
+          >
+            <FileText size={18} />
+            View invoice
+          </Link>
           <button
             onClick={handleGoHome}
             className="bg-primary-600 text-white px-6 py-3 rounded-full font-light hover:bg-primary-700 transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl"
@@ -165,68 +176,27 @@ export default function ConfirmationScreen({
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
-        <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
-          <Calendar className="text-primary-600" size={24} />
-          <div>
-            <p className="text-sm text-gray-500">Appointment Date & Time</p>
-            <p className="font-semibold text-lg">
-              {(() => {
-                const d = date instanceof Date ? date : new Date(date as string)
-                if (Number.isNaN(d.getTime())) return timeSlot ? `— at ${timeSlot}` : '—'
-                return `${format(d, 'EEEE, MMMM d, yyyy')} at ${timeSlot}`
-              })()}
-            </p>
-          </div>
-        </div>
+      {/* Tax Invoice - matches PDF format */}
+      <TaxInvoice
+        data={{
+          salonName: (invoiceSettings.brandName || locationName || 'SALON').toUpperCase(),
+          phone: locationMobile ?? undefined,
+          address: locationAddress ?? undefined,
+          website: invoiceSettings.website ?? undefined,
+          logoUrl: locationImageUrl ?? undefined,
+          invoiceNo: bookingToken,
+          invoiceDate: format(date instanceof Date ? date : new Date(date as string), 'dd/MM/yyyy'),
+          customerName: customerName ?? undefined,
+          customerMobile: customerMobile ?? undefined,
+          services,
+          totalAmount,
+          amountPaid,
+          dueAmount,
+          terms: invoiceSettings.terms,
+        }}
+      />
 
-        <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
-          <CreditCard className="text-primary-600" size={24} />
-          <div>
-            <p className="text-sm text-gray-500">Booking Token</p>
-            <p className="font-semibold text-lg font-mono">{bookingToken}</p>
-          </div>
-        </div>
-
-        <div>
-          <p className="text-sm text-gray-500 mb-3">Services</p>
-          <div className="space-y-2">
-            {services.map((service) => (
-              <div key={service.id} className="flex justify-between items-center py-2">
-                <p className="font-medium">{service.name}</p>
-                <p className="text-gray-600">₹{service.price}</p>
-              </div>
-            ))}
-            <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-              <p className="font-semibold">Total Amount</p>
-              <p className="font-bold text-primary-600 text-lg">₹{totalAmount}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-          <p className="text-sm text-gray-600">
-            <strong>Payment Status:</strong> {paymentStatus}
-          </p>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Amount Paid</span>
-            <span className="font-medium text-green-700">₹{amountPaid}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Due Amount</span>
-            <span className="font-medium text-amber-700">₹{dueAmount}</span>
-          </div>
-          {(onlineAmount > 0 || cashAmount > 0) && (
-            <div className="text-xs text-gray-500 pt-1 border-t border-gray-200 mt-2">
-              {onlineAmount > 0 && <span>Online: ₹{onlineAmount}</span>}
-              {onlineAmount > 0 && cashAmount > 0 && ' · '}
-              {cashAmount > 0 && <span>Cash: ₹{cashAmount}</span>}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 no-print">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 print:hidden">
         <p className="text-sm text-blue-800">
           <strong>Important:</strong> Please arrive 10 minutes before your appointment time. 
           Show your booking token at the salon.
