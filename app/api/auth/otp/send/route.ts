@@ -47,8 +47,13 @@ export async function POST(request: Request) {
         )
       }
     } else {
-      // Fallback: no SMS/WhatsApp configured – OTP stored in DB for verify endpoint
-      console.warn('OTP stored but not sent – configure WHATSAPP_* for WhatsApp OTP')
+      // No WhatsApp configured – OTP stored in DB. For testing, log OTP when enabled.
+      const logForTesting = process.env.LOG_OTP_WHEN_NO_WHATSAPP === 'true'
+      if (logForTesting) {
+        console.log(`[OTP TEST] ${mobile} → ${otp} (copy from server logs)`)
+      } else {
+        console.warn('OTP stored but not sent – set WHATSAPP_* or LOG_OTP_WHEN_NO_WHATSAPP=true for testing')
+      }
     }
 
     return NextResponse.json({ success: true, message: 'OTP sent' })
