@@ -1,5 +1,8 @@
 // Simple role-based auth helper (can be enhanced with proper OTP auth later)
 
+// TODO: Set to false when login/signup is re-enabled in the future
+export const AUTH_DISABLED_FOR_NOW = true
+
 export type UserRole = 'CUSTOMER' | 'STAFF' | 'ADMIN'
 
 export function getUserRole(): UserRole {

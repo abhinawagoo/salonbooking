@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Plus, Minus } from 'lucide-react'
+import { AUTH_DISABLED_FOR_NOW } from '@/lib/auth'
 
 interface ServiceItem {
   id: string
@@ -32,7 +33,7 @@ export default function CartPage() {
     } else {
       setItems([])
     }
-    if (process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true') {
+    if (AUTH_DISABLED_FOR_NOW || process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true') {
       setLoggedIn(true)
     } else {
       fetch('/api/user/me')
@@ -181,7 +182,7 @@ export default function CartPage() {
             <p className="text-lg font-bold text-gray-900">₹{total.toLocaleString('en-IN')}</p>
             <p className="text-xs text-gray-500">Total</p>
           </div>
-          {loggedIn || process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true' ? (
+          {loggedIn ? (
             <Link
               href="/booking/location"
               className="flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-full min-h-[48px] transition-colors"

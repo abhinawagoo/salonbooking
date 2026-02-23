@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { sendOtpWhatsApp } from '@/lib/whatsapp-cloud'
 
 const OTP_EXPIRY_MINUTES = 10
 const DEV_OTP = '1234' // For development; in production use real SMS
@@ -33,8 +34,22 @@ export async function POST(request: Request) {
       data: { mobile, otp, expiresAt },
     })
 
-    // TODO: Send OTP via MSG91 or similar
-    // await sendOtpSms(mobile, otp)
+    // Send OTP via WhatsApp Cloud API (direct, no BSP) when configured
+    const useWhatsApp =
+      process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID
+    if (useWhatsApp) {
+      const result = await sendOtpWhatsApp(mobile, otp)
+      if (!result.ok) {
+        console.error('WhatsApp OTP failed:', result.error)
+        return NextResponse.json(
+          { error: 'Failed to send OTP. Please try again.' },
+          { status: 500 }
+        )
+      }
+    } else {
+      // Fallback: no SMS/WhatsApp configured – OTP stored in DB for verify endpoint
+      console.warn('OTP stored but not sent – configure WHATSAPP_* for WhatsApp OTP')
+    }
 
     return NextResponse.json({ success: true, message: 'OTP sent' })
   } catch (e) {

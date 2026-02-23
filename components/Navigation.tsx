@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Calendar, Sparkles, User, LogOut, History } from 'lucide-react'
 import { usePathname } from 'next/navigation'
-import { getUserRole, type UserRole } from '@/lib/auth'
+import { getUserRole, AUTH_DISABLED_FOR_NOW, type UserRole } from '@/lib/auth'
 
 interface LoggedInUser {
   id: string
@@ -26,7 +26,7 @@ export default function Navigation() {
     setUserRole(getUserRole())
   }, [pathname])
 
-  const authDisabled = process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true'
+  const authDisabled = AUTH_DISABLED_FOR_NOW || process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true'
   useEffect(() => {
     if (authDisabled) {
       setLoggedInUser(null)

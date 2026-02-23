@@ -78,6 +78,73 @@ export async function sendWhatsAppTemplate(
 }
 
 /**
+ * Send OTP via WhatsApp Cloud API (authentication template).
+ * Requires an approved authentication template in Meta (e.g. Copy Code type).
+ * Template body: "{{1}} is your verification code." – pass OTP as first param.
+ * Set WHATSAPP_OTP_TEMPLATE_NAME in .env (default: otp_verification).
+ */
+export async function sendOtpWhatsApp(mobile: string, otp: string): Promise<{ ok: boolean; error?: string }> {
+  const { token, phoneId } = getConfig()
+  if (!token || !phoneId) {
+    console.warn('WhatsApp Cloud: WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID not set')
+    return { ok: false, error: 'Not configured' }
+  }
+
+  const templateName = process.env.WHATSAPP_OTP_TEMPLATE_NAME || 'otp_verification'
+  const lang = process.env.WHATSAPP_TEMPLATE_LANG || 'en'
+  const expiryMinutes = parseInt(process.env.WHATSAPP_OTP_EXPIRY_MINUTES || '10', 10) || 10
+
+  const to = toE164(mobile)
+  const url = `${GRAPH_API}/${phoneId}/messages`
+
+  const components: Record<string, unknown>[] = [
+    {
+      type: 'body',
+      parameters: [{ type: 'text', text: otp }],
+      add_security_recommendation: true,
+    },
+  ]
+  if (expiryMinutes > 0 && expiryMinutes <= 90) {
+    components.push({
+      type: 'footer',
+      code_expiration_minutes: expiryMinutes,
+    })
+  }
+
+  const body = {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'template',
+    template: {
+      name: templateName,
+      language: { code: lang },
+      components,
+    },
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    })
+    const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+    if (!res.ok) {
+      const msg = data.error?.message || res.statusText
+      console.error('WhatsApp Cloud OTP error:', res.status, msg)
+      return { ok: false, error: msg }
+    }
+    return { ok: true }
+  } catch (e) {
+    console.error('WhatsApp Cloud OTP request failed:', e)
+    return { ok: false, error: String(e) }
+  }
+}
+
+/**
  * Send invoice link to customer after payment (via WhatsApp Cloud API).
  * Uses template with body params: {{1}} customer name, {{2}} invoice link.
  * Create template in Meta: "Hi {{1}}, your booking payment is confirmed. View & download invoice: {{2}}"

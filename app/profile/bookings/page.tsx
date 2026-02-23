@@ -1,10 +1,12 @@
 'use client'
 
+// TODO: Re-enable when login/signup is implemented. Auth disabled for now (AUTH_DISABLED_FOR_NOW in lib/auth.ts)
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Calendar, MapPin, CreditCard } from 'lucide-react'
 import { format } from 'date-fns'
+import { AUTH_DISABLED_FOR_NOW } from '@/lib/auth'
 
 interface BookingItem {
   id: string
@@ -26,7 +28,7 @@ export default function ProfileBookingsPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true') {
+    if (AUTH_DISABLED_FOR_NOW || process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true') {
       router.replace('/')
       return
     }

@@ -1,0 +1,31 @@
+---
+description: Project context and deferred features for Cursor
+alwaysApply: true
+---
+
+# Project Context
+
+## Login / Signup – Disabled for Now
+
+**Login and signup features are currently disabled.** They will be implemented in the future.
+
+- **Control**: `AUTH_DISABLED_FOR_NOW` in `lib/auth.ts` – set to `true` to disable auth app-wide
+- **Behavior when disabled**:
+  - `/login` and `/login/otp` redirect to home (or `returnTo` param)
+  - Navigation hides Login button and Profile dropdown
+  - Cart shows "Proceed to Book" without requiring login
+  - Profile/My Bookings (`/profile/bookings`) redirects to home
+- **To re-enable**: Set `AUTH_DISABLED_FOR_NOW = false` in `lib/auth.ts`
+- **Related**: `NEXT_PUBLIC_DISABLE_AUTH` env var can also disable auth (for testing)
+
+## Auth Flow (when re-enabled)
+
+- OTP-based login: `/login` → send OTP → `/login/otp` → verify → set cookie
+- APIs: `/api/auth/otp/send`, `/api/auth/otp/verify`, `/api/auth/logout`
+- User session: JWT in cookie (`salon_auth`), `lib/auth-jwt.ts`
+
+## WhatsApp Cloud API (direct, no BSP)
+
+- **OTP**: `sendOtpWhatsApp()` in `lib/whatsapp-cloud.ts` – used by `/api/auth/otp/send` when `WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID` are set
+- **Invoice**: `sendInvoiceWhatsApp()` – sent after payment (callback + webhook). Template: "Hi {{1}}, your booking payment is confirmed. View & download invoice: {{2}}"
+- **Setup**: Meta Business Manager → App → WhatsApp → Phone Number ID + Access Token. Create OTP (Copy Code) and invoice templates; set names in `.env`
