@@ -235,6 +235,10 @@ export default function HomePage() {
     setModalService(null)
   }
 
+  const handleRemoveService = (serviceId: string) => {
+    setSelectedServices((prev) => prev.filter((s) => s.id !== serviceId))
+  }
+
   const handleContinue = () => {
     sessionStorage.setItem('selectedServices', JSON.stringify(selectedServices))
     router.push('/cart')
@@ -417,6 +421,7 @@ export default function HomePage() {
                     imageUrl={service.imageUrl}
                     onAdd={() => handleServiceClick(service)}
                     isSelected={selectedServices.some((s) => s.id === service.id)}
+                    onRemove={() => handleRemoveService(service.id)}
                   />
                 ))}
               </div>
@@ -484,6 +489,7 @@ export default function HomePage() {
           onClose={() => setModalService(null)}
           onAdd={handleAddService}
           isSelected={modalService ? selectedServices.some((s) => s.id === modalService.id) : false}
+          onRemove={() => modalService && handleRemoveService(modalService.id)}
         />
       )}
 

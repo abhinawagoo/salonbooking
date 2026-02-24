@@ -15,17 +15,25 @@ interface ServiceModalProps {
   isOpen: boolean
   onClose: () => void
   onAdd: () => void
-  /** When true, show as already selected and disable add */
+  /** When true, show as already selected. Pass onRemove to allow tap-to-remove. */
   isSelected?: boolean
+  onRemove?: () => void
 }
 
-export default function ServiceModal({ service, isOpen, onClose, onAdd, isSelected = false }: ServiceModalProps) {
+export default function ServiceModal({ service, isOpen, onClose, onAdd, isSelected = false, onRemove }: ServiceModalProps) {
   if (!isOpen) return null
 
   const handleAdd = () => {
     if (isSelected) return
     onAdd()
     onClose()
+  }
+
+  const handleRemove = () => {
+    if (isSelected && onRemove) {
+      onRemove()
+      onClose()
+    }
   }
 
   return (
@@ -70,10 +78,21 @@ export default function ServiceModal({ service, isOpen, onClose, onAdd, isSelect
             </div>
           </div>
           {isSelected ? (
-            <div className="w-full bg-green-100 text-green-800 py-3 rounded-lg font-semibold min-h-[48px] flex items-center justify-center gap-2">
-              <Check size={20} />
-              Already selected
-            </div>
+            onRemove ? (
+              <button
+                type="button"
+                onClick={handleRemove}
+                className="w-full bg-green-100 text-green-800 py-3 rounded-lg font-semibold min-h-[48px] flex items-center justify-center gap-2 hover:bg-green-200 transition-colors touch-manipulation"
+              >
+                <Check size={20} />
+                Tap to remove
+              </button>
+            ) : (
+              <div className="w-full bg-green-100 text-green-800 py-3 rounded-lg font-semibold min-h-[48px] flex items-center justify-center gap-2">
+                <Check size={20} />
+                Already selected
+              </div>
+            )
           ) : (
             <button
               type="button"

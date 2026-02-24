@@ -12,11 +12,12 @@ interface ServiceCardProps {
   imageUrl?: string
   duration: number
   onAdd: () => void
-  /** When true, show as already selected and disable add button */
+  /** When true, show as already selected. Click to remove if onRemove provided. */
   isSelected?: boolean
+  onRemove?: () => void
 }
 
-export default function ServiceCard({ name, description, price, imageUrl, duration, onAdd, isSelected = false }: ServiceCardProps) {
+export default function ServiceCard({ name, description, price, imageUrl, duration, onAdd, isSelected = false, onRemove }: ServiceCardProps) {
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
 
@@ -58,10 +59,21 @@ export default function ServiceCard({ name, description, price, imageUrl, durati
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 pt-2 sm:pt-4 border-t border-gray-100">
           <span className="text-base sm:text-2xl font-semibold sm:font-light text-gray-900">₹{price}</span>
           {isSelected ? (
-            <div className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg bg-green-100 text-green-800 font-medium text-xs sm:text-sm min-h-[40px] sm:min-h-[44px]">
-              <Check size={14} className="sm:w-[18px] sm:h-[18px]" />
-              <span>Added</span>
-            </div>
+            onRemove ? (
+              <button
+                type="button"
+                onClick={onRemove}
+                className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg bg-green-100 text-green-800 font-medium text-xs sm:text-sm min-h-[40px] sm:min-h-[44px] hover:bg-green-200 transition-colors touch-manipulation w-full sm:w-auto"
+              >
+                <Check size={14} className="sm:w-[18px] sm:h-[18px]" />
+                <span>Added</span>
+              </button>
+            ) : (
+              <div className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg bg-green-100 text-green-800 font-medium text-xs sm:text-sm min-h-[40px] sm:min-h-[44px]">
+                <Check size={14} className="sm:w-[18px] sm:h-[18px]" />
+                <span>Added</span>
+              </div>
+            )
           ) : (
             <button
               type="button"

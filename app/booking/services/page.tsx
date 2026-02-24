@@ -131,6 +131,10 @@ export default function BookingServicesPage() {
     setModalService(null)
   }
 
+  const handleRemoveService = (serviceId: string) => {
+    setSelectedServices((prev) => prev.filter((s) => s.id !== serviceId))
+  }
+
   const handleContinue = () => {
     if (selectedServices.length === 0) {
       alert('Please add at least one service.')
@@ -147,7 +151,7 @@ export default function BookingServicesPage() {
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0)
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen bg-gray-50 pb-28 sm:pb-24">
       <div className="bg-white shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
           <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Add services</h1>
@@ -206,6 +210,7 @@ export default function BookingServicesPage() {
                 imageUrl={service.imageUrl}
                 onAdd={() => handleServiceClick(service)}
                 isSelected={selectedServices.some((s) => s.id === service.id)}
+                onRemove={() => handleRemoveService(service.id)}
               />
             ))}
           </div>
@@ -289,6 +294,7 @@ export default function BookingServicesPage() {
           onClose={() => setModalService(null)}
           onAdd={handleAddService}
           isSelected={modalService ? selectedServices.some((s) => s.id === modalService.id) : false}
+          onRemove={() => modalService && handleRemoveService(modalService.id)}
         />
       )}
     </div>

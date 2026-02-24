@@ -63,7 +63,7 @@ export default function DateTimePage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-4 sm:py-8">
+      <div className="max-w-4xl mx-auto px-4 py-4 sm:py-8 pb-[env(safe-area-inset-bottom)]">
         <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
           {isLoadingSlots ? (
             <div className="text-center py-8">

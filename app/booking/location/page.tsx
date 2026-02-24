@@ -68,7 +68,7 @@ export default function LocationPage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-4 sm:py-8">
+      <div className="max-w-2xl mx-auto px-4 py-4 sm:py-8 pb-[env(safe-area-inset-bottom)]">
         <div className="space-y-2 sm:space-y-3">
           {locations.map((loc) => (
             <button

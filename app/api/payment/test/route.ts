@@ -10,12 +10,11 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { bookingId } = body
 
-    // Allow test payment if explicitly enabled or in development
+    // Allow test payment when USE_TEST_PAYMENT=true (set in Vercel for production testing)
     const allowTestPayment = process.env.USE_TEST_PAYMENT === 'true' || process.env.NODE_ENV === 'development'
-    
-    if (!allowTestPayment && process.env.NODE_ENV === 'production') {
+    if (!allowTestPayment) {
       return NextResponse.json(
-        { error: 'Test payment not available in production' },
+        { error: 'Test payment not available. Set USE_TEST_PAYMENT=true in Vercel for testing.' },
         { status: 403 }
       )
     }
