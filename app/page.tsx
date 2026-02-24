@@ -1,89 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import ServiceCard from '@/components/ServiceCard'
 import ServiceModal from '@/components/ServiceModal'
 import CartBar from '@/components/CartBar'
+import HeroBannerCarousel from '@/components/HeroBannerCarousel'
 import { useRouter } from 'next/navigation'
 import { setUserRole } from '@/lib/auth'
 import { ChevronRight } from 'lucide-react'
-import { PLACEHOLDER_IMAGE } from '@/lib/placeholders'
-
-const HERO_VIDEO_URL = process.env.NEXT_PUBLIC_HERO_VIDEO_URL
-
-function HeroVideoCarousel({ urls }: { urls: string[] }) {
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
-
-  const scrollToAndPlay = useCallback((index: number) => {
-    const video = videoRefs.current[index]
-    if (!video) return
-    videoRefs.current.forEach((v, i) => { if (v && i !== index) v.pause() })
-    const card = video.closest('[data-video-card]') as HTMLElement | null
-    if (card) {
-      card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
-    }
-    video.play().catch(() => {})
-  }, [])
-
-  const handleEnded = useCallback(
-    (index: number) => {
-      const next = (index + 1) % urls.length
-      scrollToAndPlay(next)
-    },
-    [urls.length, scrollToAndPlay]
-  )
-
-  useEffect(() => {
-    if (urls.length > 0) {
-      videoRefs.current[0]?.play().catch(() => {})
-    }
-  }, [urls.length])
-
-  return (
-    <div
-      ref={scrollRef}
-      className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 sm:pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory scroll-smooth"
-    >
-      {urls.map((url, i) => (
-        <div
-          key={i}
-          data-video-card
-          className="flex-shrink-0 w-[85vw] sm:w-[400px] snap-start rounded-xl overflow-hidden bg-gray-900 shadow-lg"
-        >
-          <video
-            ref={(el) => { videoRefs.current[i] = el }}
-            src={url}
-            muted
-            playsInline
-            autoPlay={i === 0}
-            loop={false}
-            onEnded={() => handleEnded(i)}
-            className="w-full aspect-video object-cover"
-            preload="auto"
-          >
-            Your browser does not support the video tag.
-          </video>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function GalleryImage({ url }: { url: string }) {
-  const [loaded, setLoaded] = useState(false)
-  return (
-    <div className="flex-shrink-0 w-40 h-28 sm:w-48 sm:h-32 rounded-xl overflow-hidden bg-gray-200 snap-start relative">
-      <img src={PLACEHOLDER_IMAGE} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover" />
-      <img
-        src={url}
-        alt=""
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'}`}
-        onLoad={() => setLoaded(true)}
-      />
-    </div>
-  )
-}
 
 interface Service {
   id: string
@@ -245,57 +169,23 @@ export default function HomePage() {
   }
 
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0)
-  const hasHeroBanner = !!settings.heroBannerImageUrl
+
+  // Banner slides: hero image + gallery images (Image 1 style – promotional carousel at top)
+  const bannerSlides: { imageUrl: string; title?: string; subtitle?: string }[] = [
+    ...(settings.heroBannerImageUrl ? [{ imageUrl: settings.heroBannerImageUrl, title: settings.brandName, subtitle: 'Get now with' }] : []),
+    ...(settings.galleryImageUrls?.slice(0, 4) ?? []).map((url) => ({ imageUrl: url, title: settings.brandName, subtitle: 'Discover' })),
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50 pb-28 sm:pb-24">
-      {/* Hero banner - 30% viewport height, image or gradient; mobile-friendly */}
-      <section className="relative w-full h-[30vh] min-h-[140px] max-h-[280px] sm:max-h-[320px] bg-gray-900 text-white overflow-hidden">
-        {/* Background: banner image or gradient */}
-        {hasHeroBanner ? (
-          <>
-            <img
-              src={settings.heroBannerImageUrl!}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-black/45 z-[1]" aria-hidden />
-          </>
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-r from-primary-700 to-primary-900 z-[1]" />
-        )}
-      </section>
-
-      {/* Videos – just below banner: auto-play, auto-scroll to next when video ends */}
-      {(() => {
-        const videoUrls =
-          (settings.heroVideoUrls?.length ?? 0) > 0
-            ? settings.heroVideoUrls
-            : HERO_VIDEO_URL
-              ? [HERO_VIDEO_URL]
-              : []
-        return videoUrls.length > 0 ? (
-          <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-            <HeroVideoCarousel urls={videoUrls} />
-          </section>
-        ) : null
-      })()}
-
-      {/* Gallery (custom photos from admin) - scroll on mobile */}
-      {settings.galleryImageUrls?.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Gallery</h2>
-          <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 sm:pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory">
-            {settings.galleryImageUrls.map((url, i) => (
-              <GalleryImage key={i} url={url} />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Top banner carousel – full width, no side margins */}
+      <div className="w-full">
+        <HeroBannerCarousel slides={bannerSlides} brandName={settings.brandName} />
+      </div>
 
       {/* Main: sticky Services header + scrollable content */}
       <div id="services" className="max-w-7xl mx-auto px-4 sm:px-6 scroll-mt-[88px]">
-        {/* Sticky header: Services + category pills – stays at top when scrolling (mobile) */}
+        {/* Sticky header: Services + category pills */}
         <div className="lg:hidden sticky top-14 z-40 bg-gray-50 pt-6 pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6">
           <h2 className="text-base font-bold text-gray-900 mb-2 sm:mb-3">{settings.menuLabel}</h2>
           <div className="flex flex-wrap gap-1.5 sm:gap-2">
@@ -303,9 +193,7 @@ export default function HomePage() {
               type="button"
               onClick={() => { setSelectedCategoryId(null); setSelectedSubcategoryId(null); setSubcategoryPopupCategory(null) }}
               className={`px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-colors min-h-[32px] sm:min-h-[36px] touch-manipulation ${
-                !selectedCategoryId
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                !selectedCategoryId ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
               }`}
             >
               All
@@ -316,9 +204,7 @@ export default function HomePage() {
                 type="button"
                 onClick={() => handleCategoryClick(cat)}
                 className={`px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-colors min-h-[32px] sm:min-h-[36px] touch-manipulation ${
-                  selectedCategoryId === cat.id
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                  selectedCategoryId === cat.id ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 {cat.name}
@@ -340,9 +226,7 @@ export default function HomePage() {
                   type="button"
                   onClick={() => { setSelectedCategoryId(null); setSelectedSubcategoryId(null); setSubcategoryPopupCategory(null) }}
                   className={`w-full text-left px-4 py-3 flex items-center justify-between text-sm font-medium transition-colors ${
-                    !selectedCategoryId
-                      ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-600'
-                      : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'
+                    !selectedCategoryId ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-600' : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'
                   }`}
                 >
                   All Services
@@ -356,9 +240,7 @@ export default function HomePage() {
                       type="button"
                       onClick={() => handleCategoryClick(cat)}
                       className={`w-full text-left px-4 py-3 flex items-center justify-between text-sm font-medium transition-colors ${
-                        selectedCategoryId === cat.id
-                          ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-600'
-                          : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'
+                        selectedCategoryId === cat.id ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-600' : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'
                       }`}
                     >
                       {cat.name}
@@ -371,7 +253,7 @@ export default function HomePage() {
             </div>
           </aside>
 
-          {/* Main content - service cards (2-col grid on mobile, Yes Madam style) */}
+          {/* Main content - service cards */}
           <main className="flex-1 min-w-0">
             <div className="mb-3 sm:mb-6">
               <h2 className="text-lg sm:text-2xl font-bold text-gray-900">

@@ -131,7 +131,7 @@ export default function ConfirmationScreen({
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6 min-w-0">
       <div className="text-center py-8 print:hidden">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-4">
           <CheckCircle className="text-green-600" size={48} />

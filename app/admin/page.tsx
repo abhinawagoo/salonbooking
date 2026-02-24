@@ -484,7 +484,10 @@ function ServiceModal({ service, onClose, onSave }: { service: Service | null; o
               )
             })()}
             <div>
-              <label className="block text-sm font-light text-gray-700 mb-3">Service image</label>
+              <label className="block text-sm font-light text-gray-700 mb-1">Service image</label>
+              <p className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded mb-3 inline-block">
+                Recommended: 600×450 px (4:3) or 400×300 • Min 200×150 • Max 5 MB
+              </p>
               {formData.imageUrl ? (
                 <div className="flex items-center gap-3">
                   <img src={formData.imageUrl} alt="" className="w-20 h-20 rounded-lg object-cover border border-gray-200" />

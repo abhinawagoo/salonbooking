@@ -130,7 +130,7 @@ function ConfirmationPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 overflow-x-hidden">
       <ConfirmationScreen
         bookingToken={bookingData.token}
         date={typeof bookingData.date === 'string' ? new Date(bookingData.date) : bookingData.date}

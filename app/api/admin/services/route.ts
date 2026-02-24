@@ -31,13 +31,27 @@ export async function POST(request: Request) {
       )
     }
 
+    // When subCategoryId is set, always derive categoryId from the subcategory's parent
+    let finalCategoryId = categoryId?.trim() || null
+    let finalSubCategoryId = subCategoryId?.trim() || null
+
+    if (finalSubCategoryId) {
+      const sub = await prisma.subCategory.findUnique({
+        where: { id: finalSubCategoryId },
+        select: { categoryId: true },
+      })
+      if (sub) {
+        finalCategoryId = sub.categoryId
+      }
+    }
+
     // Services must be under subcategories when category has subcategories
-    if (categoryId) {
+    if (finalCategoryId) {
       const category = await prisma.category.findUnique({
-        where: { id: categoryId },
+        where: { id: finalCategoryId },
         include: { subcategories: { select: { id: true } } },
       })
-      if (category?.subcategories?.length && !subCategoryId) {
+      if (category?.subcategories?.length && !finalSubCategoryId) {
         return NextResponse.json(
           { error: 'Subcategory is required. Services belong under subcategories.' },
           { status: 400 }
@@ -52,8 +66,8 @@ export async function POST(request: Request) {
         price: parseFloat(price),
         duration: parseInt(duration),
         imageUrl: imageUrl?.trim() || null,
-        categoryId: categoryId?.trim() || null,
-        subCategoryId: subCategoryId?.trim() || null,
+        categoryId: finalCategoryId,
+        subCategoryId: finalSubCategoryId,
         isActive: true,
       },
     })

@@ -46,39 +46,31 @@ export default function TaxInvoice({ data }: { data: TaxInvoiceData }) {
 
   return (
     <div
-      className="tax-invoice bg-white text-gray-800 rounded-lg overflow-hidden"
-      style={{
-        maxWidth: 800,
-        margin: '0 auto',
-        padding: 24,
-        border: '1px solid #E5E0D8',
-        boxSizing: 'border-box',
-      }}
+      className="tax-invoice bg-white text-gray-800 rounded-lg overflow-hidden w-full max-w-[800px] mx-auto box-border border border-[#E5E0D8] px-4 py-5 sm:px-6 sm:py-6"
     >
-      {/* Header */}
-      <div className="flex justify-between items-start gap-8" style={{ marginBottom: 8 }}>
-        <div className="flex gap-4">
+      {/* Header - stack on mobile, row on desktop */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start sm:gap-8 mb-2">
+        <div className="flex gap-3 sm:gap-4">
           {data.logoUrl && (
             <img
               src={data.logoUrl}
               alt=""
-              className="w-16 h-16 object-cover rounded"
-              style={{ flexShrink: 0 }}
+              className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded shrink-0"
             />
           )}
-          <div>
-            <h1 className="text-2xl font-bold uppercase tracking-tight text-gray-900">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-bold uppercase tracking-tight text-gray-900 break-words">
               {data.salonName}
             </h1>
-            {data.phone && <p className="text-sm text-gray-600 mt-1">{data.phone}</p>}
-            {data.address && <p className="text-sm text-gray-600">{data.address}</p>}
+            {data.phone && <p className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">{data.phone}</p>}
+            {data.address && <p className="text-xs sm:text-sm text-gray-600 break-words">{data.address}</p>}
             {data.website && (
-              <p className="text-sm text-gray-600 mt-0.5">
+              <p className="text-xs sm:text-sm text-gray-600 mt-0.5">
                 <a
                   href={data.website.startsWith('http') ? data.website : `https://${data.website}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary-600 hover:underline"
+                  className="text-primary-600 hover:underline break-all"
                 >
                   {data.website.replace(/^https?:\/\//, '')}
                 </a>
@@ -86,131 +78,147 @@ export default function TaxInvoice({ data }: { data: TaxInvoiceData }) {
             )}
           </div>
         </div>
-        <div className="text-right">
-          <h2 className="text-xl font-bold text-gray-900">TAX INVOICE</h2>
+        <div className="sm:text-right shrink-0">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900">TAX INVOICE</h2>
         </div>
       </div>
 
-      {/* Info Row - 60% reduced spacing above/below */}
-      <div className="flex justify-between text-sm" style={{ marginTop: 8, marginBottom: 8 }}>
+      {/* Info Row */}
+      <div className="flex flex-col gap-1 sm:flex-row sm:justify-between text-xs sm:text-sm mt-2 sm:mt-2 mb-2 sm:mb-2">
         <span className="font-medium text-gray-700">Invoice No: {data.invoiceNo}</span>
         <span className="font-medium text-gray-700">Invoice Date: {data.invoiceDate}</span>
       </div>
 
       {/* Bill To Box */}
       <div
-        className="rounded-lg p-4 mb-5"
-        style={{
-          marginBottom: 20,
-          border: '1px solid #E5E0D8',
-          backgroundColor: '#FAFAF9',
-        }}
+        className="rounded-lg p-3 sm:p-4 mb-4 sm:mb-5 border border-[#E5E0D8] bg-[#FAFAF9]"
       >
-        <p className="text-sm font-semibold text-gray-900 mb-2">Bill To</p>
-        {data.customerName && <p className="text-sm text-gray-700">{data.customerName}</p>}
-        {data.customerMobile && <p className="text-sm text-gray-600">Mobile: {data.customerMobile}</p>}
+        <p className="text-xs sm:text-sm font-semibold text-gray-900 mb-1 sm:mb-2">Bill To</p>
+        {data.customerName && <p className="text-xs sm:text-sm text-gray-700 break-words">{data.customerName}</p>}
+        {data.customerMobile && <p className="text-xs sm:text-sm text-gray-600">Mobile: {data.customerMobile}</p>}
       </div>
 
-      {/* Table with Subtotal */}
-      <div className="overflow-x-auto" style={{ marginBottom: 20 }}>
-        <table className="w-full text-sm border-collapse" style={{ border: '1px solid #E5E0D8', borderRadius: 8, overflow: 'hidden', tableLayout: 'fixed' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#F3EEE6' }}>
-              <th className="text-left font-semibold text-gray-900" style={{ padding: 10, width: '5%' }}>No</th>
-              <th className="text-left font-semibold text-gray-900" style={{ padding: 10, width: '35%' }}>Services</th>
-              <th className="text-left font-semibold text-gray-900" style={{ padding: 10, width: '10%' }}>SAC</th>
-              <th className="text-left font-semibold text-gray-900" style={{ padding: 10, width: '10%' }}>Qty</th>
-              <th className="text-right font-semibold text-gray-900" style={{ padding: 10, width: '14%' }}>Rate</th>
-              <th className="text-right font-semibold text-gray-900" style={{ padding: 10, width: '14%' }}>Tax</th>
-              <th className="text-right font-semibold text-gray-900" style={{ padding: 10, width: '12%' }}>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.services.map((s, i) => {
-              const taxable = Math.round((s.price / (1 + GST_RATE)) * 100) / 100
-              const tax = Math.round((s.price - taxable) * 100) / 100
-              return (
-                <tr key={s.id} style={{ borderBottom: '1px solid #E5E0D8' }}>
-                  <td className="text-gray-600 align-middle" style={{ padding: 10 }}>{i + 1}</td>
-                  <td className="text-gray-600 align-middle" style={{ padding: 10, wordBreak: 'break-word', maxWidth: 0 }}>{s.name}</td>
-                  <td className="text-gray-600 align-middle" style={{ padding: 10 }}>{SAC_CODE}</td>
-                  <td className="text-gray-600 align-middle" style={{ padding: 10 }}>1 PCS</td>
-                  <td className="text-right text-gray-700 font-medium align-middle" style={{ padding: 10 }}>{formatCurrency(taxable, 2)}</td>
-                  <td className="text-right text-gray-700 font-medium align-middle" style={{ padding: 10 }}>{formatCurrency(tax, 2)}</td>
-                  <td className="text-right font-semibold align-middle" style={{ padding: 10 }}>{formatCurrency(s.price)}</td>
-                </tr>
-              )
-            })}
-            <tr style={{ backgroundColor: '#F3EEE6' }} className="font-semibold">
-              <td style={{ padding: 10 }}>SUBTOTAL</td>
-              <td style={{ padding: 10 }} colSpan={3}></td>
-              <td style={{ padding: 10, textAlign: 'right' }}></td>
-              <td style={{ padding: 10, textAlign: 'right' }}>{formatCurrency(totalTax, 2)}</td>
-              <td style={{ padding: 10, textAlign: 'right' }}>{formatCurrency(data.totalAmount)}</td>
-            </tr>
-          </tbody>
-        </table>
+      {/* Mobile: Card layout for services | Desktop: Table */}
+      <div className="mb-4 sm:mb-5">
+        {/* Mobile card layout - visible only on small screens */}
+        <div className="md:hidden space-y-3">
+          {data.services.map((s, i) => {
+            const taxable = Math.round((s.price / (1 + GST_RATE)) * 100) / 100
+            const tax = Math.round((s.price - taxable) * 100) / 100
+            return (
+              <div
+                key={s.id}
+                className="rounded-lg border border-[#E5E0D8] p-3 bg-[#FAFAF9]/50"
+              >
+                <div className="flex justify-between items-start gap-2 mb-2">
+                  <span className="text-xs text-gray-500">#{i + 1}</span>
+                  <span className="text-sm font-semibold text-gray-900">{formatCurrency(s.price)}</span>
+                </div>
+                <p className="text-sm font-medium text-gray-800 break-words">{s.name}</p>
+                <div className="flex justify-between text-xs text-gray-600 mt-1">
+                  <span>Rate: {formatCurrency(taxable, 2)}</span>
+                  <span>Tax: {formatCurrency(tax, 2)}</span>
+                </div>
+              </div>
+            )
+          })}
+          <div className="rounded-lg border border-[#E5E0D8] p-3 bg-[#F3EEE6] font-semibold flex justify-between items-center">
+            <span className="text-sm text-gray-900">SUBTOTAL</span>
+            <span className="text-sm text-gray-900">{formatCurrency(data.totalAmount)}</span>
+          </div>
+        </div>
+
+        {/* Desktop table - hidden on mobile */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-sm border-collapse min-w-[560px]" style={{ border: '1px solid #E5E0D8', borderRadius: 8, overflow: 'hidden', tableLayout: 'fixed' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#F3EEE6' }}>
+                <th className="text-left font-semibold text-gray-900" style={{ padding: 10, width: '5%' }}>No</th>
+                <th className="text-left font-semibold text-gray-900" style={{ padding: 10, width: '35%' }}>Services</th>
+                <th className="text-left font-semibold text-gray-900" style={{ padding: 10, width: '10%' }}>SAC</th>
+                <th className="text-left font-semibold text-gray-900" style={{ padding: 10, width: '10%' }}>Qty</th>
+                <th className="text-right font-semibold text-gray-900" style={{ padding: 10, width: '14%' }}>Rate</th>
+                <th className="text-right font-semibold text-gray-900" style={{ padding: 10, width: '14%' }}>Tax</th>
+                <th className="text-right font-semibold text-gray-900" style={{ padding: 10, width: '12%' }}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.services.map((s, i) => {
+                const taxable = Math.round((s.price / (1 + GST_RATE)) * 100) / 100
+                const tax = Math.round((s.price - taxable) * 100) / 100
+                return (
+                  <tr key={s.id} style={{ borderBottom: '1px solid #E5E0D8' }}>
+                    <td className="text-gray-600 align-middle" style={{ padding: 10 }}>{i + 1}</td>
+                    <td className="text-gray-600 align-middle" style={{ padding: 10, wordBreak: 'break-word', maxWidth: 0 }}>{s.name}</td>
+                    <td className="text-gray-600 align-middle" style={{ padding: 10 }}>{SAC_CODE}</td>
+                    <td className="text-gray-600 align-middle" style={{ padding: 10 }}>1 PCS</td>
+                    <td className="text-right text-gray-700 font-medium align-middle" style={{ padding: 10 }}>{formatCurrency(taxable, 2)}</td>
+                    <td className="text-right text-gray-700 font-medium align-middle" style={{ padding: 10 }}>{formatCurrency(tax, 2)}</td>
+                    <td className="text-right font-semibold align-middle" style={{ padding: 10 }}>{formatCurrency(s.price)}</td>
+                  </tr>
+                )
+              })}
+              <tr style={{ backgroundColor: '#F3EEE6' }} className="font-semibold">
+                <td style={{ padding: 10 }}>SUBTOTAL</td>
+                <td style={{ padding: 10 }} colSpan={3}></td>
+                <td style={{ padding: 10, textAlign: 'right' }}></td>
+                <td style={{ padding: 10, textAlign: 'right' }}>{formatCurrency(totalTax, 2)}</td>
+                <td style={{ padding: 10, textAlign: 'right' }}>{formatCurrency(data.totalAmount)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Bottom Grid: Terms (left) | Totals (right) */}
-      <div className="flex justify-between gap-8" style={{ marginTop: 20, marginBottom: 24 }}>
-        <div className="flex-1 max-w-md">
+      {/* Bottom: Terms (left) | Totals (right) - stack on mobile */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:gap-8 mt-4 sm:mt-5 mb-6 sm:mb-6">
+        <div className="flex-1 sm:max-w-md min-w-0">
           <p className="text-xs font-medium text-gray-600 mb-1">Terms & Conditions</p>
-          <p className="text-sm text-gray-600">{terms}</p>
+          <p className="text-xs sm:text-sm text-gray-600 break-words">{terms}</p>
         </div>
         <div
-          className="rounded-lg p-4 flex-shrink-0"
-          style={{
-            minWidth: 220,
-            border: '1px solid #E5E0D8',
-            backgroundColor: '#FAFAF9',
-          }}
+          className="rounded-lg p-4 shrink-0 w-full sm:w-auto sm:min-w-[220px] border border-[#E5E0D8] bg-[#FAFAF9]"
         >
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Taxable Amount</span>
-              <span className="font-medium">{formatCurrency(totalTaxable, 2)}</span>
+          <div className="space-y-1.5 sm:space-y-2">
+            <div className="flex justify-between text-xs sm:text-sm gap-2">
+              <span className="text-gray-600 shrink-0">Taxable Amount</span>
+              <span className="font-medium text-right break-all">{formatCurrency(totalTaxable, 2)}</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">CGST @9%</span>
-              <span className="font-medium">{formatCurrency(totalTaxable * 0.09, 2)}</span>
+            <div className="flex justify-between text-xs sm:text-sm gap-2">
+              <span className="text-gray-600 shrink-0">CGST @9%</span>
+              <span className="font-medium text-right break-all">{formatCurrency(totalTaxable * 0.09, 2)}</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">SGST @9%</span>
-              <span className="font-medium">{formatCurrency(totalTaxable * 0.09, 2)}</span>
+            <div className="flex justify-between text-xs sm:text-sm gap-2">
+              <span className="text-gray-600 shrink-0">SGST @9%</span>
+              <span className="font-medium text-right break-all">{formatCurrency(totalTaxable * 0.09, 2)}</span>
             </div>
-            <div className="flex justify-between text-sm font-bold pt-2 border-t border-gray-200">
-              <span className="text-gray-900">Total Amount</span>
-              <span className="text-gray-900">{formatCurrency(data.totalAmount)}</span>
+            <div className="flex justify-between text-xs sm:text-sm font-bold pt-2 border-t border-gray-200 gap-2">
+              <span className="text-gray-900 shrink-0">Total Amount</span>
+              <span className="text-gray-900 text-right break-all">{formatCurrency(data.totalAmount)}</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Received Amount</span>
-              <span className="font-medium">{formatCurrency(amountPaid)}</span>
+            <div className="flex justify-between text-xs sm:text-sm gap-2">
+              <span className="text-gray-600 shrink-0">Received Amount</span>
+              <span className="font-medium text-right break-all">{formatCurrency(amountPaid)}</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Balance</span>
-              <span className="font-medium">{formatCurrency(dueAmount)}</span>
+            <div className="flex justify-between text-xs sm:text-sm gap-2">
+              <span className="text-gray-600 shrink-0">Balance</span>
+              <span className="font-medium text-right break-all">{formatCurrency(dueAmount)}</span>
             </div>
             <div className="pt-2 border-t border-gray-200">
               <p className="text-xs text-gray-600 mb-0.5">Total Amount (in words):</p>
-              <p className="text-xs font-semibold text-gray-900">{numberToWords(data.totalAmount)}</p>
+              <p className="text-xs font-semibold text-gray-900 break-words">{numberToWords(data.totalAmount)}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Signature Box - bottom right */}
-      <div className="flex justify-end mt-6">
+      <div className="flex justify-end mt-4 sm:mt-6">
         <div
-          className="rounded-lg flex flex-col justify-end pb-2 pl-3 pt-2"
-          style={{
-            width: 140,
-            height: 56,
-            border: '1px solid #E5E0D8',
-          }}
+          className="rounded-lg flex flex-col justify-end pb-2 pl-3 pt-2 border border-[#E5E0D8] w-28 sm:w-36 h-12 sm:h-14"
         >
           <span className="text-xs text-gray-600">Signature</span>
-          <span className="text-xs font-semibold text-gray-900">{data.salonName}</span>
+          <span className="text-xs font-semibold text-gray-900 truncate">{data.salonName}</span>
         </div>
       </div>
     </div>

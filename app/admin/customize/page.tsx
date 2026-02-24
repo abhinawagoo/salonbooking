@@ -211,13 +211,16 @@ export default function AdminCustomizePage() {
             </div>
           </div>
 
-          {/* Hero Banner (single image, 30% height on homepage) */}
+          {/* Hero Banner (single image, carousel slide on homepage) */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
               <ImageIcon size={20} />
               Hero Banner
             </h2>
-            <p className="text-sm text-gray-500 mb-4">One image shown at the top of the homepage (30% of screen height). JPEG, PNG or WebP. Looks great on mobile.</p>
+            <p className="text-sm text-gray-500 mb-1">One image shown at the top of the homepage carousel. JPEG, PNG or WebP.</p>
+            <p className="text-xs text-amber-700 bg-amber-50 px-2 py-1.5 rounded mb-4 inline-block">
+              Recommended: 1200×400 px (3:1) or 1920×640 px • Min 800×300 • Max 10 MB
+            </p>
             <div className="flex flex-wrap items-start gap-4">
               {settings.heroBannerImageUrl ? (
                 <div className="relative group">
@@ -322,7 +325,10 @@ export default function AdminCustomizePage() {
               <ImageIcon size={20} />
               Gallery Photos (up to {MAX_IMAGES})
             </h2>
-            <p className="text-sm text-gray-500 mb-4">Photos shown on the site. JPEG, PNG or WebP.</p>
+            <p className="text-sm text-gray-500 mb-1">Photos shown on the site. Also used as carousel slides. JPEG, PNG or WebP.</p>
+            <p className="text-xs text-amber-700 bg-amber-50 px-2 py-1.5 rounded mb-4 inline-block">
+              Recommended: 800×600 px (4:3) or 1200×900 • Min 400×300 • Max 10 MB
+            </p>
             <div className="flex flex-wrap gap-4">
               {settings.galleryImageUrls.map((url, i) => (
                 <div key={i} className="relative group">

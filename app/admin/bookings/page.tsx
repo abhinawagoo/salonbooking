@@ -359,7 +359,7 @@ export default function AdminBookingsPage() {
             <p className="text-gray-600 text-lg">No bookings found</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1">
             {sortedDates.map((dateKey) => {
               const dateBookings = groupedBookings[dateKey]
               const date = new Date(dateKey)
@@ -408,7 +408,7 @@ export default function AdminBookingsPage() {
                   {/* Bookings List */}
                   {isExpanded && (
                     <div className="border-t border-gray-200">
-                      <div className="divide-y divide-gray-100">
+                      <div className="divide-y divide-gray-100 max-h-[40vh] overflow-y-auto">
                         {dateBookings
                           .sort((a, b) => a.timeSlot.localeCompare(b.timeSlot))
                           .map((booking) => {

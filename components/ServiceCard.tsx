@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ShoppingCart, Check } from 'lucide-react'
+import { Plus, Check } from 'lucide-react'
 import { PLACEHOLDER_IMAGE } from '@/lib/placeholders'
 
 interface ServiceCardProps {
@@ -80,7 +80,7 @@ export default function ServiceCard({ name, description, price, imageUrl, durati
               onClick={onAdd}
               className="bg-gray-900 sm:bg-primary-600 text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg hover:bg-gray-800 sm:hover:bg-primary-700 transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 font-medium text-xs sm:text-sm min-h-[40px] sm:min-h-[44px] shadow-sm hover:shadow-md touch-manipulation"
             >
-              <ShoppingCart size={14} className="sm:w-[18px] sm:h-[18px]" />
+              <Plus size={14} className="sm:w-[18px] sm:h-[18px]" />
               <span>Add</span>
             </button>
           )}

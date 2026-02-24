@@ -9,15 +9,32 @@ export async function PUT(
     const body = await request.json()
     const { name, description, price, duration, imageUrl, isActive, categoryId, subCategoryId } = body
 
+    const existing = await prisma.service.findUnique({
+      where: { id: params.id },
+      select: { categoryId: true, subCategoryId: true },
+    })
+
+    let finalCategoryId = categoryId !== undefined ? (categoryId?.trim() || null) : existing?.categoryId ?? null
+    let finalSubCategoryId = subCategoryId !== undefined ? (subCategoryId?.trim() || null) : existing?.subCategoryId ?? null
+
+    // When subCategoryId is set, always derive categoryId from the subcategory's parent
+    if (finalSubCategoryId) {
+      const sub = await prisma.subCategory.findUnique({
+        where: { id: finalSubCategoryId },
+        select: { categoryId: true },
+      })
+      if (sub) {
+        finalCategoryId = sub.categoryId
+      }
+    }
+
     // Services must be under subcategories when category has subcategories
-    const catId = categoryId ?? (await prisma.service.findUnique({ where: { id: params.id }, select: { categoryId: true } }))?.categoryId
-    if (catId) {
+    if (finalCategoryId) {
       const category = await prisma.category.findUnique({
-        where: { id: catId },
+        where: { id: finalCategoryId },
         include: { subcategories: { select: { id: true } } },
       })
-      const subId = subCategoryId ?? (await prisma.service.findUnique({ where: { id: params.id }, select: { subCategoryId: true } }))?.subCategoryId
-      if (category?.subcategories?.length && !subId) {
+      if (category?.subcategories?.length && !finalSubCategoryId) {
         return NextResponse.json(
           { error: 'Subcategory is required. Services belong under subcategories.' },
           { status: 400 }
@@ -32,8 +49,13 @@ export async function PUT(
     if (duration !== undefined) updateData.duration = parseInt(duration)
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl
     if (isActive !== undefined) updateData.isActive = isActive
-    if (categoryId !== undefined) updateData.categoryId = categoryId?.trim() || null
-    if (subCategoryId !== undefined) updateData.subCategoryId = subCategoryId?.trim() || null
+    // Always sync categoryId when subCategoryId is set (derived from subcategory's parent)
+    if (subCategoryId !== undefined) {
+      updateData.subCategoryId = finalSubCategoryId
+      updateData.categoryId = finalCategoryId
+    } else if (categoryId !== undefined) {
+      updateData.categoryId = finalCategoryId
+    }
 
     const service = await prisma.service.update({
       where: { id: params.id },

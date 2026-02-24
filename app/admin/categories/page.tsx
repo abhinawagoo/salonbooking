@@ -484,6 +484,9 @@ export default function AdminCategoriesPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Image</label>
+                <p className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded mb-2 inline-block">
+                  Recommended: 200×200 px (1:1) or 400×400 • Min 100×100 • Max 5 MB
+                </p>
                 {subForm.imageUrl ? (
                   <div className="flex items-center gap-3">
                     <img src={subForm.imageUrl} alt="" className="w-16 h-16 rounded-lg object-cover border" />
