@@ -26,7 +26,7 @@ export default function RootLayout({
       <body className="antialiased flex flex-col min-h-screen">
         <Navigation />
         <ScrollToHash />
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 bg-gray-50">{children}</main>
         <Footer />
       </body>
     </html>

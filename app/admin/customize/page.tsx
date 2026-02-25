@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Upload, X, Save, Image as ImageIcon, MapPin, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Upload, X, Save, Image as ImageIcon, MapPin, ChevronRight, Video } from 'lucide-react'
 import { setUserRole } from '@/lib/auth'
 
 const MAX_IMAGES = 5
@@ -69,10 +69,11 @@ export default function AdminCustomizePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       })
-      if (!res.ok) throw new Error('Failed to save')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || data?.message || 'Failed to save')
       alert('Customization saved!')
-    } catch {
-      alert('Failed to save. Please try again.')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to save. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -100,17 +101,21 @@ export default function AdminCustomizePage() {
 
   const removeBanner = async () => {
     const url = settings.heroBannerImageUrl
-    if (url) {
-      try {
-        await fetch('/api/admin/upload/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url }),
-        })
-      } catch {
-        // continue to remove from UI
+    if (!url) return
+    try {
+      const res = await fetch('/api/admin/upload/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data?.error || 'Failed to delete from storage. Please try again.')
+        return
       }
       setSettings((s) => ({ ...s, heroBannerImageUrl: null }))
+    } catch {
+      alert('Failed to delete from storage. Please try again.')
     }
   }
 
@@ -140,17 +145,21 @@ export default function AdminCustomizePage() {
 
   const removeUrl = async (index: number) => {
     const url = settings.galleryImageUrls[index]
-    if (url) {
-      try {
-        await fetch('/api/admin/upload/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url }),
-        })
-      } catch {
-        // continue to remove from UI
+    if (!url) return
+    try {
+      const res = await fetch('/api/admin/upload/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data?.error || 'Failed to delete from storage. Please try again.')
+        return
       }
       setSettings((s) => ({ ...s, galleryImageUrls: s.galleryImageUrls.filter((_, i) => i !== index) }))
+    } catch {
+      alert('Failed to delete from storage. Please try again.')
     }
   }
 
@@ -301,6 +310,22 @@ export default function AdminCustomizePage() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Home Videos */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+              <Video size={20} />
+              Home Videos
+            </h2>
+            <p className="text-sm text-gray-500 mb-4">Short videos for the home page carousel. Auto-play, muted. MP4 format.</p>
+            <Link
+              href="/admin/home-videos"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 font-medium text-sm transition-colors"
+            >
+              Manage home videos
+              <ChevronRight size={18} />
+            </Link>
           </div>
 
           {/* Locations */}

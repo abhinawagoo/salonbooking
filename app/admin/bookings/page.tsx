@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { format, isToday, isPast, isFuture, startOfDay, parseISO } from 'date-fns'
-import { CheckCircle, XCircle, Clock, Calendar, ChevronDown, ChevronUp, Phone, User, DollarSign, Banknote, Edit3 } from 'lucide-react'
+import { format, isToday, isPast, isFuture, startOfDay, parseISO, subDays } from 'date-fns'
+import { CheckCircle, XCircle, Clock, Calendar, ChevronDown, ChevronUp, Phone, User, DollarSign, Banknote, Edit3, Download } from 'lucide-react'
 import { setUserRole } from '@/lib/auth'
 
 interface Location {
@@ -42,15 +42,19 @@ interface Booking {
   } | null
 }
 
-type FilterType = 'all' | 'today' | 'upcoming' | 'previous'
+type FilterType = 'all' | 'today' | 'upcoming' | 'previous' | 'dateRange'
 
 export default function AdminBookingsPage() {
+  const todayStr = format(new Date(), 'yyyy-MM-dd')
+  const weekAgoStr = format(subDays(new Date(), 7), 'yyyy-MM-dd')
   const [locations, setLocations] = useState<Location[]>([])
   const [selectedLocationId, setSelectedLocationId] = useState<string>('')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filter, setFilter] = useState<FilterType>('all')
-  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set())
+  const [dateFrom, setDateFrom] = useState(weekAgoStr)
+  const [dateTo, setDateTo] = useState(todayStr)
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set([todayStr]))
   const [paymentModal, setPaymentModal] = useState<{
     booking: Booking
     mode: 'add_cash' | 'edit'
@@ -84,8 +88,8 @@ export default function AdminBookingsPage() {
       const data = await response.json()
       if (Array.isArray(data)) {
         setBookings(data)
-        const today = format(new Date(), 'yyyy-MM-dd')
-        setExpandedDates(new Set([today]))
+        const todayFmt = format(new Date(), 'yyyy-MM-dd')
+        setExpandedDates(new Set([todayFmt]))
       } else {
         setBookings([])
       }
@@ -123,7 +127,6 @@ export default function AdminBookingsPage() {
 
   // Filter bookings based on selected filter
   const getFilteredBookings = () => {
-    const now = new Date()
     switch (filter) {
       case 'today':
         return bookings.filter((b) => isToday(new Date(b.date)))
@@ -131,9 +134,60 @@ export default function AdminBookingsPage() {
         return bookings.filter((b) => isFuture(startOfDay(new Date(b.date))))
       case 'previous':
         return bookings.filter((b) => isPast(startOfDay(new Date(b.date))) && !isToday(new Date(b.date)))
+      case 'dateRange': {
+        let from = startOfDay(parseISO(dateFrom))
+        let to = startOfDay(parseISO(dateTo))
+        if (from > to) [from, to] = [to, from]
+        return bookings.filter((b) => {
+          const d = startOfDay(new Date(b.date))
+          return d >= from && d <= to
+        })
+      }
       default:
         return bookings
     }
+  }
+
+  const dateRangeBookingsCount = (() => {
+    let from = startOfDay(parseISO(dateFrom))
+    let to = startOfDay(parseISO(dateTo))
+    if (from > to) [from, to] = [to, from]
+    return bookings.filter((b) => {
+      const d = startOfDay(new Date(b.date))
+      return d >= from && d <= to
+    }).length
+  })()
+
+  const downloadFilteredBookings = () => {
+    if (filteredBookings.length === 0) return
+    const rows = filteredBookings.map((b) => {
+      const total = b.payment?.totalAmount ?? b.services.reduce((s, bs) => s + bs.price, 0)
+      const paid = b.payment?.amountPaid ?? 0
+      const services = b.services.map((bs) => `${bs.service.name} (₹${bs.price})`).join('; ')
+      return {
+        Date: format(new Date(b.date), 'yyyy-MM-dd'),
+        Time: b.timeSlot,
+        Token: b.token,
+        Customer: b.user.name,
+        Mobile: b.user.mobile,
+        Location: b.location?.name ?? '',
+        Services: services,
+        Total: total,
+        Paid: paid,
+        Due: Math.max(0, total - paid),
+        Status: b.status,
+        PaymentStatus: b.payment?.paymentStatus ?? '',
+      }
+    })
+    const headers = Object.keys(rows[0] || {})
+    const csv = [headers.join(','), ...rows.map((r) => headers.map((h) => `"${String((r as Record<string, unknown>)[h] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    const suffix = filter === 'dateRange' ? `${dateFrom}-to-${dateTo}` : filter
+    link.download = `bookings-${suffix}.csv`
+    link.click()
+    URL.revokeObjectURL(link.href)
   }
 
   // Toggle date expansion
@@ -255,7 +309,7 @@ export default function AdminBookingsPage() {
               <h1 className="text-3xl font-bold text-gray-900">Bookings</h1>
               <p className="text-gray-600 mt-1">View and manage appointments by location</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <label className="text-sm text-gray-600 font-medium">Location</label>
               <select
                 value={selectedLocationId}
@@ -268,6 +322,15 @@ export default function AdminBookingsPage() {
                 ))}
               </select>
               <span className="text-sm text-gray-600">Total: {bookings.length}</span>
+              <button
+                type="button"
+                onClick={downloadFilteredBookings}
+                disabled={filteredBookings.length === 0}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              >
+                <Download size={18} />
+                Download ({filteredBookings.length})
+              </button>
             </div>
           </div>
         </div>
@@ -345,7 +408,42 @@ export default function AdminBookingsPage() {
             >
               Previous ({bookings.filter(b => isPast(startOfDay(new Date(b.date))) && !isToday(new Date(b.date))).length})
             </button>
+            <button
+              onClick={() => setFilter('dateRange')}
+              className={`px-6 py-4 font-medium text-sm transition-colors ${
+                filter === 'dateRange'
+                  ? 'border-b-2 border-primary-600 text-primary-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Date range ({dateRangeBookingsCount})
+            </button>
           </div>
+          {filter === 'dateRange' && (
+            <div className="px-6 py-4 flex flex-wrap items-center gap-4 bg-gray-50 border-t border-gray-100">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">From</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">To</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <p className="text-sm text-gray-500">
+                Showing {filteredBookings.length} bookings from {dateFrom} to {dateTo}
+              </p>
+            </div>
+          )}
         </div>
 
         {isLoading ? (

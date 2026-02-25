@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import ServiceCard from '@/components/ServiceCard'
 import ServiceModal from '@/components/ServiceModal'
-import { ChevronRight } from 'lucide-react'
+import CartBar from '@/components/CartBar'
 
 interface Service {
   id: string
@@ -36,9 +36,8 @@ interface Category {
   subcategories?: SubCategory[]
 }
 
-export default function BookingServicesPage() {
+export default function ServicesPage() {
   const router = useRouter()
-  const [hasData, setHasData] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [allServices, setAllServices] = useState<Service[]>([])
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
@@ -49,14 +48,6 @@ export default function BookingServicesPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const location = sessionStorage.getItem('bookingLocation')
-    const dateTime = sessionStorage.getItem('bookingDateTime')
-    const customer = sessionStorage.getItem('customerDetails')
-    if (!location || !dateTime || !customer) {
-      router.push('/booking/location')
-      return
-    }
-    setHasData(true)
     const savedServices = sessionStorage.getItem('selectedServices')
     if (savedServices) {
       try {
@@ -79,7 +70,7 @@ export default function BookingServicesPage() {
       })
       .catch(() => [])
       .finally(() => setLoading(false))
-  }, [router])
+  }, [])
 
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId)
   const selectedSubcategory = selectedCategory?.subcategories?.find((s) => s.id === selectedSubcategoryId)
@@ -87,7 +78,6 @@ export default function BookingServicesPage() {
   const displayServices = (() => {
     if (selectedSubcategoryId && selectedSubcategory) {
       const fromSubcategory = selectedSubcategory.services ?? []
-      // Use nested services from API, or fallback to filter allServices by subCategoryId
       return fromSubcategory.length > 0
         ? fromSubcategory
         : allServices.filter((s) => s.subCategoryId === selectedSubcategoryId)
@@ -145,26 +135,22 @@ export default function BookingServicesPage() {
       return
     }
     sessionStorage.setItem('selectedServices', JSON.stringify(selectedServices))
-    router.push('/booking/payment')
-  }
-
-  if (!hasData) {
-    return null
+    router.push('/cart')
   }
 
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0)
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-28 sm:pb-24">
+    <div className={`min-h-screen bg-gray-50 ${selectedServices.length > 0 ? 'pb-28 sm:pb-24' : ''}`}>
       <div className="bg-white shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
-          <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Add services</h1>
+          <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Browse Services</h1>
           <p className="text-gray-600 mt-0.5 text-sm sm:text-base">Choose services for your appointment</p>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
-        {/* Category pills: wrap to next line, smaller on mobile (no horizontal scroll) */}
+        {/* Category pills */}
         <div className="flex flex-wrap gap-1.5 sm:gap-2 pb-4">
           <button
             type="button"
@@ -221,23 +207,13 @@ export default function BookingServicesPage() {
         )}
       </div>
 
-      {/* Bottom bar: selected count + continue - always visible on mobile */}
-      <div className="fixed left-0 right-0 bottom-0 bg-white border-t border-gray-200 shadow-lg z-50 p-3 sm:p-4 pb-[env(safe-area-inset-bottom)]">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 sm:gap-3 min-h-[52px]">
-          <p className="text-gray-700 font-medium text-sm sm:text-base truncate min-w-0">
-            {selectedServices.length} {selectedServices.length === 1 ? 'service' : 'services'} · ₹{totalPrice.toLocaleString('en-IN')}
-          </p>
-          <button
-            type="button"
-            onClick={handleContinue}
-            disabled={selectedServices.length === 0}
-            className="flex-shrink-0 flex items-center justify-center gap-1.5 sm:gap-2 bg-gray-900 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-medium text-sm sm:text-base hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[44px] touch-manipulation"
-          >
-            <span className="whitespace-nowrap">Continue to payment</span>
-            <ChevronRight size={18} className="sm:w-5 sm:h-5 shrink-0" />
-          </button>
-        </div>
-      </div>
+      {selectedServices.length > 0 && (
+        <CartBar
+          itemCount={selectedServices.length}
+          totalPrice={totalPrice}
+          onContinue={handleContinue}
+        />
+      )}
 
       {/* Subcategory selection popup */}
       {subcategoryPopupCategory && (

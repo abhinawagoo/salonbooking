@@ -15,7 +15,7 @@ const publicUrl = process.env.R2_PUBLIC_URL?.replace(/\/$/, '')
 export const R2_ENABLED =
   Boolean(accountId && accessKeyId && secretAccessKey && bucketName && publicUrl)
 
-export type R2Folder = 'services' | 'service' | 'hero' | 'gallery' | 'subcategory'
+export type R2Folder = 'services' | 'service' | 'hero' | 'gallery' | 'subcategory' | 'home_videos'
 
 function getClient(): S3Client | null {
   if (!R2_ENABLED || !accountId || !accessKeyId || !secretAccessKey) return null

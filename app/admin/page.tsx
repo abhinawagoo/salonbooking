@@ -315,14 +315,26 @@ function ServiceModal({ service, onClose, onSave }: { service: Service | null; o
   }, [])
   useEffect(() => {
     if (service) {
+      let categoryId = service.categoryId ?? ''
+      const subCategoryId = service.subCategoryId ?? ''
+      // If service has subcategory but no category, derive category from subcategory (fixes data inconsistency)
+      if (subCategoryId && !categoryId && categories.length > 0) {
+        for (const cat of categories) {
+          const found = cat.subcategories?.some((s) => s.id === subCategoryId)
+          if (found) {
+            categoryId = cat.id
+            break
+          }
+        }
+      }
       setFormData((f) => ({
         ...f,
-        categoryId: service.categoryId ?? '',
-        subCategoryId: service.subCategoryId ?? '',
+        categoryId,
+        subCategoryId,
         imageUrl: service.imageUrl ?? '',
       }))
     }
-  }, [service?.id, service?.categoryId, service?.subCategoryId, service?.imageUrl])
+  }, [service?.id, service?.categoryId, service?.subCategoryId, service?.imageUrl, categories])
 
   const deleteImageFromStorage = async (url: string) => {
     try {

@@ -20,18 +20,19 @@ export async function POST(request: Request) {
     }
 
     const folder = type as R2Folder
-    if (!['service', 'hero', 'gallery', 'subcategory'].includes(folder)) {
-      return NextResponse.json({ error: 'Invalid type. Use service, hero, gallery, or subcategory.' }, { status: 400 })
+    if (!['service', 'hero', 'gallery', 'subcategory', 'home_videos'].includes(folder)) {
+      return NextResponse.json({ error: 'Invalid type. Use service, hero, gallery, subcategory, or home_videos.' }, { status: 400 })
     }
 
     const fileType = file.type
     const isImage = ALLOWED_IMAGE_TYPES.includes(fileType)
     const isVideo = ALLOWED_VIDEO_TYPES.includes(fileType)
 
-    if (folder === 'hero') {
-      if (!isVideo && !isImage) {
+    if (folder === 'hero' || folder === 'home_videos') {
+      const accepts = folder === 'home_videos' ? 'MP4 video' : 'image (JPEG, PNG, WebP) or MP4 video'
+      if (folder === 'home_videos' ? !isVideo : !isVideo && !isImage) {
         return NextResponse.json(
-          { error: 'Hero accepts image (JPEG, PNG, WebP) or MP4 video.' },
+          { error: `Invalid file. ${folder === 'home_videos' ? 'Home videos' : 'Hero'} accepts ${accepts}.` },
           { status: 400 }
         )
       }
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(bytes)
 
     if (R2_ENABLED) {
-      const ext = folder === 'hero' && isVideo ? '.mp4' : path.extname(file.name) || '.jpg'
+      const ext = (folder === 'hero' && isVideo) || folder === 'home_videos' ? '.mp4' : path.extname(file.name) || '.jpg'
       const url = await uploadToR2(folder, buffer, file.type, ext)
       if (url) {
         return NextResponse.json({ url })

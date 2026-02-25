@@ -57,15 +57,6 @@ export default function HeroBannerCarousel({ slides, brandName }: HeroBannerCaro
             alt=""
             className="absolute inset-0 w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/20 to-transparent" />
-          <div className="absolute inset-0 flex flex-col justify-center px-6 sm:px-12 z-10">
-            <p className="text-white/90 text-sm sm:text-base">
-              {slide.subtitle || 'Get now with'}
-            </p>
-            <h2 className="text-2xl sm:text-4xl font-bold text-white mt-1 drop-shadow-md">
-              {slide.title || brandName}
-            </h2>
-          </div>
         </div>
       ))}
 

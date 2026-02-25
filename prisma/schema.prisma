@@ -148,6 +148,17 @@ model Payment {
   updatedAt        DateTime @updatedAt
 }
 
+// Home page short videos (reels-style carousel)
+model HomeVideo {
+  id         String   @id @default(cuid())
+  videoUrl   String
+  title      String?
+  isActive   Boolean  @default(true)
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
 // Singleton: one row (id=1). Admin customizations: brand name, menu label, hero banner, gallery images.
 model SiteCustomization {
   id                  Int      @id @default(1)

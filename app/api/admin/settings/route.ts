@@ -64,7 +64,9 @@ export async function PUT(request: Request) {
     const { brandName, menuLabel, heroVideoUrls, galleryImageUrls, invoiceWebsite, invoiceUpiId, invoiceTerms } = body
 
     const heroArr = Array.isArray(heroVideoUrls) ? heroVideoUrls.slice(0, 5) : []
-    const galleryArr = Array.isArray(galleryImageUrls) ? galleryImageUrls.slice(0, 5) : []
+    const galleryArr = Array.isArray(galleryImageUrls)
+      ? galleryImageUrls.filter((u): u is string => typeof u === 'string' && u.length > 0).slice(0, 5)
+      : []
     const brand = (brandName !== undefined ? String(brandName).trim() : null) || 'Salon'
     const menu = (menuLabel !== undefined ? String(menuLabel).trim() : null) || 'Services'
     const invWeb = invoiceWebsite !== undefined ? String(invoiceWebsite).trim() || null : undefined
@@ -116,6 +118,7 @@ export async function PUT(request: Request) {
     })
   } catch (error) {
     console.error('Error updating settings:', error)
-    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Failed to update settings'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

@@ -22,7 +22,7 @@ export default function Footer() {
   const [aboutOpen, setAboutOpen] = useState(false)
   const [quickLinksOpen, setQuickLinksOpen] = useState(false)
 
-  if (pathname?.startsWith('/booking')) {
+  if (pathname?.startsWith('/booking') || pathname === '/') {
     return null
   }
 

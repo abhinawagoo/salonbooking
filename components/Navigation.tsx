@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Calendar, Sparkles, User, LogOut, History } from 'lucide-react'
+import { User, LogOut, History } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { getUserRole, AUTH_DISABLED_FOR_NOW, type UserRole } from '@/lib/auth'
 
@@ -59,84 +59,92 @@ export default function Navigation() {
     return null
   }
 
-  const isHome = pathname === '/'
-  const barBg = isHome ? 'bg-black/10' : 'bg-black/15'
+  const btnClass = 'inline-flex items-center justify-center px-3 py-2.5 sm:px-5 rounded-full font-semibold text-sm transition-all duration-200 min-h-[44px] touch-manipulation whitespace-normal text-center'
 
   return (
-    <nav className="sticky top-0 z-50 w-full pt-2 px-2 sm:pt-4 sm:px-4">
-      <div className={`relative max-w-6xl md:mx-auto rounded-b-xl sm:rounded-b-2xl border border-t-0 border-white/20 ${barBg} backdrop-blur-2xl shadow-[0_4px_24px_rgba(0,0,0,0.15)]`}>
-        <div className="flex items-center justify-between min-h-[52px] sm:h-14 px-3 sm:px-4 gap-3">
-          <Link
-            href="/"
-            className="text-base sm:text-lg font-bold text-white min-w-0 drop-shadow-md shrink-0 truncate"
-          >
-            Shahnaz Salon
-          </Link>
+    <nav className="sticky top-0 z-50 w-full">
+      <div className="relative w-full rounded-none sm:rounded-b-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
+        {/* Gradient background inspired by sign: blue to amber */}
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-800/95 via-slate-900/95 to-amber-900/30" />
+        <div className="absolute inset-0 backdrop-blur-xl" />
+        <div className="relative border-b border-white/10 sm:rounded-b-2xl">
+          <div className="flex items-center justify-between min-h-[52px] sm:min-h-[60px] px-3 sm:px-6 gap-2 sm:gap-4 max-w-6xl mx-auto">
+            <Link
+              href="/"
+              className="flex flex-col min-w-0 shrink-0 group"
+            >
+              <span className="text-lg sm:text-xl font-bold leading-tight tracking-tight">
+                <span className="text-[#22c55e] drop-shadow-[0_0_12px_rgba(34,197,94,0.4)] group-hover:text-[#4ade80] transition-colors">Shahnaz</span>
+                <span className="text-[#f472b6] drop-shadow-[0_0_12px_rgba(244,114,182,0.4)] group-hover:text-[#f9a8d4] transition-colors"> Salon</span>
+              </span>
+              <span className="text-[10px] sm:text-xs text-white/80 font-medium tracking-[0.2em] uppercase mt-1 pl-8 sm:pl-10">
+                Only for ladies
+              </span>
+            </Link>
 
-          {/* Profile (top right) or Login – hidden when auth disabled */}
-          <div className="relative flex items-center gap-2 shrink-0" ref={profileRef}>
-            {!authDisabled && loggedInUser ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setProfileOpen((o) => !o)}
-                  className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/30 transition-colors touch-manipulation"
-                  aria-label="Profile"
-                  aria-expanded={profileOpen}
-                >
-                  <User size={20} />
-                </button>
-                {profileOpen && (
-                  <div className="absolute right-2 sm:right-4 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
-                    <div className="px-4 py-2 border-b border-gray-100">
-                      <p className="font-medium text-gray-900 truncate">{loggedInUser.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{loggedInUser.mobile}</p>
+            {/* Profile (top right) or Login – hidden when auth disabled */}
+            <div className="relative flex items-center gap-3 shrink-0" ref={profileRef}>
+              {!authDisabled && loggedInUser ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setProfileOpen((o) => !o)}
+                    className="flex items-center justify-center w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all duration-200 touch-manipulation ring-2 ring-transparent hover:ring-white/20"
+                    aria-label="Profile"
+                    aria-expanded={profileOpen}
+                  >
+                    <User size={20} />
+                  </button>
+                  {profileOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50 overflow-hidden">
+                      <div className="px-4 py-3 bg-gradient-to-r from-slate-50 to-white border-b border-gray-100">
+                        <p className="font-semibold text-gray-900 truncate">{loggedInUser.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{loggedInUser.mobile}</p>
+                      </div>
+                      <Link
+                        href="/profile/bookings"
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-700 transition-colors"
+                      >
+                        <History size={18} />
+                        My Bookings
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 text-left transition-colors"
+                      >
+                        <LogOut size={18} />
+                        Logout
+                      </button>
                     </div>
-                    <Link
-                      href="/profile/bookings"
-                      onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <History size={18} />
-                      My Bookings
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 text-left"
-                    >
-                      <LogOut size={18} />
-                      Logout
-                    </button>
-                  </div>
-                )}
-              </>
-            ) : !authDisabled ? (
-              <Link
-                href={`/login?returnTo=${encodeURIComponent(pathname || '/')}`}
-                className="flex items-center justify-center gap-1.5 bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-full text-sm font-medium border border-white/30"
-              >
-                <User size={18} />
-                <span className="hidden sm:inline">Login</span>
-              </Link>
-            ) : null}
+                  )}
+                </>
+              ) : !authDisabled ? (
+                <Link
+                  href={`/login?returnTo=${encodeURIComponent(pathname || '/')}`}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all duration-200"
+                >
+                  <User size={18} />
+                  <span className="hidden sm:inline">Login</span>
+                </Link>
+              ) : null}
 
-            {/* Services + Book (mobile and desktop) */}
-            <div className="flex items-center gap-2 flex-1 justify-end shrink-0">
-              <Link
-                href="/#services"
-                className={`inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:px-4 rounded-full font-semibold text-sm shadow-md hover:shadow-lg transition-all min-h-[44px] touch-manipulation ${
-                  pathname === '/' ? 'bg-white/20 text-white border border-white/30' : 'bg-white/20 hover:bg-white/30 text-white border border-white/30'
-                }`}
-              >
-                <Sparkles size={18} /> Services
-              </Link>
-              <Link
-                href="/booking/location"
-                className="inline-flex items-center justify-center gap-1.5 bg-white text-gray-900 px-3 py-2.5 sm:px-4 rounded-full font-semibold text-sm shadow-lg hover:bg-gray-100 transition-all min-h-[44px] touch-manipulation"
-              >
-                <Calendar size={18} /> Book
-              </Link>
+              {/* Services + Book Appointment */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Link
+                  href="/services"
+                  className={`${btnClass} bg-white/20 hover:bg-white/30 text-white border border-white/30`}
+                >
+                  Services
+                </Link>
+                <Link
+                  href="/booking/location"
+                  className={`${btnClass} bg-white/20 hover:bg-white/30 text-white border border-white/30`}
+                >
+                  <span>Book<br className="sm:hidden" /> Appointment</span>
+                </Link>
+              </div>
             </div>
           </div>
         </div>

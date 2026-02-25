@@ -32,8 +32,8 @@ export async function POST(request: Request) {
     }
 
     // When subCategoryId is set, always derive categoryId from the subcategory's parent
-    let finalCategoryId = categoryId?.trim() || null
-    let finalSubCategoryId = subCategoryId?.trim() || null
+    let finalCategoryId = (categoryId && String(categoryId).trim()) || null
+    let finalSubCategoryId = (subCategoryId && String(subCategoryId).trim()) || null
 
     if (finalSubCategoryId) {
       const sub = await prisma.subCategory.findUnique({
@@ -42,6 +42,11 @@ export async function POST(request: Request) {
       })
       if (sub) {
         finalCategoryId = sub.categoryId
+      } else {
+        return NextResponse.json(
+          { error: 'Invalid subcategory selected.' },
+          { status: 400 }
+        )
       }
     }
 

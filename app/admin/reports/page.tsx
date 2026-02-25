@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, BarChart3, Calendar, DollarSign, MapPin } from 'lucide-react'
+import { ArrowLeft, BarChart3, Calendar, DollarSign, MapPin, Download } from 'lucide-react'
 import { setUserRole } from '@/lib/auth'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, subDays } from 'date-fns'
 
 interface Location {
   id: string
@@ -33,13 +33,17 @@ interface ReportData {
   }[]
 }
 
-type PeriodType = 'day' | 'week' | 'month' | 'year'
+type PeriodType = 'day' | 'week' | 'month' | 'year' | 'dateRange'
 
 export default function AdminReportsPage() {
+  const todayStr = format(new Date(), 'yyyy-MM-dd')
+  const weekAgoStr = format(subDays(new Date(), 7), 'yyyy-MM-dd')
   const [locations, setLocations] = useState<Location[]>([])
   const [selectedLocationId, setSelectedLocationId] = useState<string>('')
   const [period, setPeriod] = useState<PeriodType>('day')
-  const [date, setDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
+  const [date, setDate] = useState(todayStr)
+  const [dateFrom, setDateFrom] = useState(weekAgoStr)
+  const [dateTo, setDateTo] = useState(todayStr)
   const [report, setReport] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -57,8 +61,13 @@ export default function AdminReportsPage() {
     setError(null)
     const params = new URLSearchParams()
     if (selectedLocationId) params.set('locationId', selectedLocationId)
-    params.set('period', period)
-    params.set('date', date)
+    if (period === 'dateRange') {
+      params.set('fromDate', dateFrom)
+      params.set('toDate', dateTo)
+    } else {
+      params.set('period', period)
+      params.set('date', date)
+    }
     fetch(`/api/admin/reports?${params}`)
       .then((r) => r.json().then((data) => ({ ok: r.ok, data })))
       .then(({ ok, data }) => {
@@ -75,12 +84,37 @@ export default function AdminReportsPage() {
         setError(err?.message || 'Could not load report')
       })
       .finally(() => setLoading(false))
-  }, [selectedLocationId, period, date])
+  }, [selectedLocationId, period, date, dateFrom, dateTo])
 
-  const periodLabel = period === 'day' ? 'Day' : period === 'week' ? 'Week' : period === 'month' ? 'Month' : 'Year'
-  const dateFrom = report?.dateFrom ? format(parseISO(report.dateFrom), 'd MMM yyyy') : ''
-  const dateTo = report?.dateTo ? format(parseISO(report.dateTo), 'd MMM yyyy') : ''
-  const rangeLabel = dateFrom === dateTo ? dateFrom : `${dateFrom} – ${dateTo}`
+  const periodLabel = period === 'day' ? 'Day' : period === 'week' ? 'Week' : period === 'month' ? 'Month' : period === 'year' ? 'Year' : 'Date range'
+  const reportDateFrom = report?.dateFrom ? format(parseISO(report.dateFrom), 'd MMM yyyy') : ''
+  const reportDateTo = report?.dateTo ? format(parseISO(report.dateTo), 'd MMM yyyy') : ''
+  const rangeLabel = reportDateFrom === reportDateTo ? reportDateFrom : `${reportDateFrom} – ${reportDateTo}`
+
+  const downloadReport = () => {
+    if (!report || report.bookings.length === 0) return
+    const rows = report.bookings.map((b) => ({
+      Date: b.date ? format(typeof b.date === 'string' ? parseISO(b.date) : new Date(b.date), 'yyyy-MM-dd') : '',
+      Time: b.timeSlot,
+      Token: b.token,
+      Location: b.locationName ?? '',
+      Customer: b.customerName,
+      Mobile: b.customerMobile,
+      Total: b.totalAmount,
+      Paid: b.amountPaid,
+      Status: b.status ?? '',
+      PaymentStatus: b.paymentStatus ?? '',
+    }))
+    const headers = Object.keys(rows[0] || {})
+    const csv = [headers.join(','), ...rows.map((r) => headers.map((h) => `"${String((r as Record<string, unknown>)[h] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    const suffix = period === 'dateRange' ? `${dateFrom}-to-${dateTo}` : `${period}-${date}`
+    link.download = `report-${suffix}.csv`
+    link.click()
+    URL.revokeObjectURL(link.href)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -126,19 +160,54 @@ export default function AdminReportsPage() {
               <option value="week">Week</option>
               <option value="month">Month</option>
               <option value="year">Year</option>
+              <option value="dateRange">Date range</option>
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
-              {period === 'day' ? 'Date' : period === 'week' ? 'Week of' : period === 'month' ? 'Month' : 'Year'}
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2"
-            />
-          </div>
+          {period === 'dateRange' ? (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">From</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">To</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-3 py-2"
+                />
+              </div>
+            </>
+          ) : (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                {period === 'day' ? 'Date' : period === 'week' ? 'Week of' : period === 'month' ? 'Month' : 'Year'}
+              </label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-2"
+              />
+            </div>
+          )}
+          {report && (
+            <button
+              type="button"
+              onClick={downloadReport}
+              disabled={report.bookings.length === 0}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+            >
+              <Download size={18} />
+              Download ({report.bookings.length})
+            </button>
+          )}
         </div>
 
         {loading ? (

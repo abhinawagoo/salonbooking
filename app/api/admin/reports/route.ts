@@ -37,15 +37,27 @@ function getDateRange(period: ReportPeriod, dateStr: string): { from: Date; to: 
   }
 }
 
-/** GET: Sales/bookings report by location and period (day, week, month, year) */
+/** GET: Sales/bookings report by location and period (day, week, month, year) or custom date range (fromDate, toDate) */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const locationId = searchParams.get('locationId') || undefined
     const period = (searchParams.get('period') as ReportPeriod) || 'day'
     const dateStr = searchParams.get('date') || new Date().toISOString().slice(0, 10)
+    const fromDateParam = searchParams.get('fromDate')
+    const toDateParam = searchParams.get('toDate')
 
-    const { from, to } = getDateRange(period, dateStr)
+    let from: Date
+    let to: Date
+    if (fromDateParam && toDateParam) {
+      from = startOfDay(parseISO(fromDateParam))
+      to = startOfDay(parseISO(toDateParam))
+      if (from > to) [from, to] = [to, from]
+    } else {
+      const range = getDateRange(period, dateStr)
+      from = range.from
+      to = range.to
+    }
 
     const where = {
       date: { gte: from, lte: to },
