@@ -60,7 +60,7 @@ export default function ConfirmationScreen({
       .then((s) => setInvoiceSettings({
         brandName: s.brandName,
         website: s.invoiceWebsite ?? s.website,
-        terms: s.invoiceTerms ?? 'Goods once sold will not be taken back or exchanged',
+        terms: s.invoiceTerms ?? '',
       }))
       .catch(() => {})
   }, [])
@@ -93,7 +93,7 @@ export default function ConfirmationScreen({
         locationImageUrl,
         brandName: settings.brandName,
         website: settings.invoiceWebsite,
-        terms: settings.invoiceTerms ?? 'Goods once sold will not be taken back or exchanged',
+        terms: settings.invoiceTerms ?? '',
         invoiceNumber: bookingToken,
       }
       const res = await fetch('/api/invoice/pdf', {

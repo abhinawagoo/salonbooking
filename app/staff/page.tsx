@@ -136,7 +136,7 @@ export default function StaffDashboard() {
       customerMobile: booking.user?.mobile ?? undefined,
       brandName: settings.brandName,
       website: settings.invoiceWebsite,
-      terms: settings.invoiceTerms ?? 'Goods once sold will not be taken back or exchanged',
+      terms: settings.invoiceTerms ?? '',
       invoiceNumber: booking.token,
     }
     try {

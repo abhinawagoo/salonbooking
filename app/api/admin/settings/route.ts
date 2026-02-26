@@ -11,7 +11,7 @@ function parseJsonArray(str: string | null): string[] {
   }
 }
 
-type SettingsRow = { brandName: string; menuLabel: string; heroVideoUrls: string | null; galleryImageUrls: string | null; invoiceWebsite: string | null; invoiceUpiId: string | null; invoiceTerms: string | null }
+type SettingsRow = { brandName: string; menuLabel: string; heroVideoUrls: string | null; galleryImageUrls: string | null; invoiceWebsite: string | null; invoiceUpiId: string | null; invoiceTerms: string | null; facebookUrl: string | null; instagramUrl: string | null }
 
 const defaultSettings = {
   brandName: 'Salon',
@@ -22,6 +22,8 @@ const defaultSettings = {
   invoiceWebsite: null as string | null,
   invoiceUpiId: null as string | null,
   invoiceTerms: null as string | null,
+  facebookUrl: null as string | null,
+  instagramUrl: null as string | null,
 }
 
 export async function GET() {
@@ -30,15 +32,38 @@ export async function GET() {
     try {
       rows = await prisma.$queryRaw<SettingsRow[]>`
         SELECT "brandName", "menuLabel", "heroVideoUrls", "galleryImageUrls",
-          "invoiceWebsite", "invoiceUpiId", "invoiceTerms"
+          "invoiceWebsite", "invoiceUpiId", "invoiceTerms",
+          "facebookUrl", "instagramUrl"
         FROM "SiteCustomization" WHERE id = 1 LIMIT 1
       `
     } catch {
-      const minimal = await prisma.$queryRaw<{ brandName: string; menuLabel: string }[]>`
-        SELECT "brandName", "menuLabel" FROM "SiteCustomization" WHERE id = 1 LIMIT 1
-      `
-      if (!minimal.length) return NextResponse.json(defaultSettings)
-      return NextResponse.json({ ...defaultSettings, brandName: minimal[0].brandName, menuLabel: minimal[0].menuLabel })
+      try {
+        const fallback = await prisma.$queryRaw<Omit<SettingsRow, 'facebookUrl' | 'instagramUrl'>[]>`
+          SELECT "brandName", "menuLabel", "heroVideoUrls", "galleryImageUrls",
+            "invoiceWebsite", "invoiceUpiId", "invoiceTerms"
+          FROM "SiteCustomization" WHERE id = 1 LIMIT 1
+        `
+        if (!fallback.length) return NextResponse.json(defaultSettings)
+        const s = fallback[0]
+        return NextResponse.json({
+          ...defaultSettings,
+          brandName: s.brandName,
+          menuLabel: s.menuLabel,
+          heroVideoUrls: parseJsonArray(s.heroVideoUrls),
+          galleryImageUrls: parseJsonArray(s.galleryImageUrls),
+          invoiceWebsite: s.invoiceWebsite ?? null,
+          invoiceUpiId: s.invoiceUpiId ?? null,
+          invoiceTerms: s.invoiceTerms ?? null,
+          facebookUrl: null,
+          instagramUrl: null,
+        })
+      } catch {
+        const minimal = await prisma.$queryRaw<{ brandName: string; menuLabel: string }[]>`
+          SELECT "brandName", "menuLabel" FROM "SiteCustomization" WHERE id = 1 LIMIT 1
+        `
+        if (!minimal.length) return NextResponse.json(defaultSettings)
+        return NextResponse.json({ ...defaultSettings, brandName: minimal[0].brandName, menuLabel: minimal[0].menuLabel })
+      }
     }
     if (!rows.length) return NextResponse.json(defaultSettings)
     const s = rows[0]
@@ -51,6 +76,8 @@ export async function GET() {
       invoiceWebsite: s.invoiceWebsite ?? null,
       invoiceUpiId: s.invoiceUpiId ?? null,
       invoiceTerms: s.invoiceTerms ?? null,
+      facebookUrl: s.facebookUrl ?? null,
+      instagramUrl: s.instagramUrl ?? null,
     })
   } catch (error) {
     console.error('Error fetching settings:', error)
@@ -61,7 +88,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
-    const { brandName, menuLabel, heroVideoUrls, galleryImageUrls, invoiceWebsite, invoiceUpiId, invoiceTerms } = body
+    const { brandName, menuLabel, heroVideoUrls, galleryImageUrls, invoiceWebsite, invoiceUpiId, invoiceTerms, facebookUrl, instagramUrl } = body
 
     const heroArr = Array.isArray(heroVideoUrls) ? heroVideoUrls.slice(0, 5) : []
     const galleryArr = Array.isArray(galleryImageUrls)
@@ -72,6 +99,8 @@ export async function PUT(request: Request) {
     const invWeb = invoiceWebsite !== undefined ? String(invoiceWebsite).trim() || null : undefined
     const invUpi = invoiceUpiId !== undefined ? String(invoiceUpiId).trim() || null : undefined
     const invTerms = invoiceTerms !== undefined ? String(invoiceTerms).trim() || null : undefined
+    const fbUrl = facebookUrl !== undefined ? String(facebookUrl).trim() || null : undefined
+    const igUrl = instagramUrl !== undefined ? String(instagramUrl).trim() || null : undefined
 
     const s = await prisma.siteCustomization.upsert({
       where: { id: 1 },
@@ -84,6 +113,8 @@ export async function PUT(request: Request) {
         invoiceWebsite: invWeb ?? null,
         invoiceUpiId: invUpi ?? null,
         invoiceTerms: invTerms ?? null,
+        facebookUrl: fbUrl ?? null,
+        instagramUrl: igUrl ?? null,
       },
       update: {
         brandName: brand,
@@ -93,6 +124,8 @@ export async function PUT(request: Request) {
         ...(invWeb !== undefined && { invoiceWebsite: invWeb }),
         ...(invUpi !== undefined && { invoiceUpiId: invUpi }),
         ...(invTerms !== undefined && { invoiceTerms: invTerms }),
+        ...(fbUrl !== undefined && { facebookUrl: fbUrl }),
+        ...(igUrl !== undefined && { instagramUrl: igUrl }),
       },
     })
 
@@ -104,6 +137,8 @@ export async function PUT(request: Request) {
       invoiceWebsite: s.invoiceWebsite,
       invoiceUpiId: s.invoiceUpiId,
       invoiceTerms: s.invoiceTerms,
+      facebookUrl: s.facebookUrl,
+      instagramUrl: s.instagramUrl,
     }]
     const r = rows[0]
     return NextResponse.json({
@@ -115,6 +150,8 @@ export async function PUT(request: Request) {
       invoiceWebsite: r?.invoiceWebsite ?? null,
       invoiceUpiId: r?.invoiceUpiId ?? null,
       invoiceTerms: r?.invoiceTerms ?? null,
+      facebookUrl: r?.facebookUrl ?? null,
+      instagramUrl: r?.instagramUrl ?? null,
     })
   } catch (error) {
     console.error('Error updating settings:', error)

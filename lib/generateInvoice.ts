@@ -5,8 +5,6 @@ import { formatCurrencyPdf } from './currency'
 
 const SAC_CODE = '9984'
 const GST_RATE = 0.18
-const DEFAULT_TERMS = 'Goods once sold will not be taken back or exchanged'
-
 interface Service {
   id: string
   name: string
@@ -108,7 +106,7 @@ export function generateInvoicePDF(data: InvoiceData) {
   const salonName = (data.brandName || data.locationName || 'SALON').toUpperCase()
   const invoiceNo = data.invoiceNumber || data.bookingToken
   const invoiceDate = format(data.date, 'dd/MM/yyyy')
-  const terms = data.terms || DEFAULT_TERMS
+  const terms = data.terms?.trim() || ''
 
   // ----- HEADER -----
   const hasLogo = data.locationImageDataUrl && data.locationImageDataUrl.startsWith('data:image/')
@@ -246,9 +244,11 @@ export function generateInvoicePDF(data: InvoiceData) {
   doc.setFontSize(9)
   doc.setTextColor(...GRAY)
   doc.text('Terms & Conditions', margin, yPos)
-  doc.setFontSize(8)
-  const termsLines = doc.splitTextToSize(terms, 95)
-  doc.text(termsLines, margin, yPos + 6)
+  if (terms) {
+    doc.setFontSize(8)
+    const termsLines = doc.splitTextToSize(terms, 95)
+    doc.text(termsLines, margin, yPos + 6)
+  }
 
   doc.setDrawColor(...BORDER_COLOR)
   doc.setFillColor(250, 250, 249)

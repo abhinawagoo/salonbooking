@@ -7,6 +7,7 @@
  */
 
 import { sendBookingConfirmationWhatsApp } from './whatsapp-cloud'
+import { toE164 } from './phone'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
@@ -38,8 +39,7 @@ async function sendSmsMsg91(mobile: string, message: string): Promise<boolean> {
     console.warn('MSG91_AUTH_KEY not set, skipping SMS')
     return false
   }
-  const normalizedMobile = mobile.replace(/\D/g, '').replace(/^0/, '')
-  const to = normalizedMobile.length === 10 ? `91${normalizedMobile}` : normalizedMobile
+  const to = toE164(mobile)
   const url = `https://api.msg91.com/api/sendhttp.php?authkey=${encodeURIComponent(authkey)}&mobiles=${encodeURIComponent(to)}&message=${encodeURIComponent(message)}&sender=${encodeURIComponent(sender)}&route=4&country=91`
   try {
     const res = await fetch(url)
@@ -62,8 +62,7 @@ async function sendWhatsApp360dialog(mobile: string, templateName: string, param
     console.warn('DIALOG360_API_KEY not set, skipping WhatsApp')
     return false
   }
-  const waId = mobile.replace(/\D/g, '').replace(/^0/, '')
-  const to = waId.length === 10 ? `91${waId}` : waId
+  const to = toE164(mobile)
   const body = {
     messaging_product: 'whatsapp',
     to: to,
@@ -108,8 +107,7 @@ async function sendWhatsAppMsg91(mobile: string, templateId: string, params: Rec
     console.warn('MSG91_AUTH_KEY not set, skipping WhatsApp')
     return false
   }
-  const to = mobile.replace(/\D/g, '').replace(/^0/, '')
-  const recipient = to.length === 10 ? `91${to}` : to
+  const recipient = toE164(mobile)
   const body = {
     authkey,
     recipient,

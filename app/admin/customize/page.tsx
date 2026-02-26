@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Upload, X, Save, Image as ImageIcon, MapPin, ChevronRight, Video } from 'lucide-react'
+import { ArrowLeft, Upload, X, Save, Image as ImageIcon, MapPin, ChevronRight, Video, Share2 } from 'lucide-react'
 import { setUserRole } from '@/lib/auth'
 
 const MAX_IMAGES = 5
@@ -16,6 +16,8 @@ interface Settings {
   invoiceWebsite: string
   invoiceUpiId: string
   invoiceTerms: string
+  facebookUrl: string
+  instagramUrl: string
 }
 
 export default function AdminCustomizePage() {
@@ -28,6 +30,8 @@ export default function AdminCustomizePage() {
     invoiceWebsite: '',
     invoiceUpiId: '',
     invoiceTerms: '',
+    facebookUrl: '',
+    instagramUrl: '',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -52,6 +56,8 @@ export default function AdminCustomizePage() {
         invoiceWebsite: data.invoiceWebsite ?? '',
         invoiceUpiId: data.invoiceUpiId ?? '',
         invoiceTerms: data.invoiceTerms ?? '',
+        facebookUrl: data.facebookUrl ?? '',
+        instagramUrl: data.instagramUrl ?? '',
       })
     } catch {
       setSettings((s) => ({ ...s }))
@@ -283,6 +289,37 @@ export default function AdminCustomizePage() {
             </div>
           </div>
 
+          {/* Social Links */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+              <Share2 size={20} />
+              Social Links
+            </h2>
+            <p className="text-sm text-gray-500 mb-4">Facebook and Instagram URLs shown in the footer.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Facebook URL</label>
+                <input
+                  type="url"
+                  value={settings.facebookUrl}
+                  onChange={(e) => setSettings((s) => ({ ...s, facebookUrl: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="https://facebook.com/yourpage"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Instagram URL</label>
+                <input
+                  type="url"
+                  value={settings.instagramUrl}
+                  onChange={(e) => setSettings((s) => ({ ...s, instagramUrl: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="https://instagram.com/yourhandle"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Tax Invoice Settings */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-2">Tax Invoice Settings</h2>
@@ -306,7 +343,7 @@ export default function AdminCustomizePage() {
                   value={settings.invoiceTerms}
                   onChange={(e) => setSettings((s) => ({ ...s, invoiceTerms: e.target.value }))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="e.g. Goods once sold will not be taken back or exchanged."
+                  placeholder="Leave blank to show only the link to full Terms & Conditions"
                 />
               </div>
             </div>

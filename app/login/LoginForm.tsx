@@ -11,10 +11,13 @@ export default function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const returnTo = searchParams.get('returnTo') || '/'
+  const authDisabled = process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true'
 
   useEffect(() => {
-    router.replace(returnTo)
-  }, [router, returnTo])
+    if (authDisabled) {
+      router.replace(returnTo)
+    }
+  }, [router, returnTo, authDisabled])
 
   const [mobile, setMobile] = useState('')
   const [marketingConsent, setMarketingConsent] = useState(true)
@@ -44,6 +47,14 @@ export default function LoginForm() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (authDisabled) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-300 border-t-gray-900" />
+      </div>
+    )
   }
 
   return (
@@ -108,6 +119,10 @@ export default function LoginForm() {
             By proceeding, you agree to {BRAND_NAME}&apos;s{' '}
             <Link href="/terms" className="text-primary-600 hover:underline">
               Terms &amp; Conditions
+            </Link>
+            {' and '}
+            <Link href="/privacy" className="text-primary-600 hover:underline">
+              Privacy Policy
             </Link>
           </p>
         </div>

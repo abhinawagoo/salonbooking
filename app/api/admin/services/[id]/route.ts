@@ -77,8 +77,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.service.delete({
+    // Soft delete: set isActive=false to preserve booking history (BookingService references this service)
+    await prisma.service.update({
       where: { id: params.id },
+      data: { isActive: false },
     })
 
     return NextResponse.json({ success: true })

@@ -1,20 +1,23 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendOtpWhatsApp } from '@/lib/whatsapp-cloud'
+import { normalizeMobileForDb } from '@/lib/phone'
 
 const OTP_EXPIRY_MINUTES = 10
 const DEV_OTP = '1234' // For development; in production use real SMS
-const DEV_BYPASS = process.env.NODE_ENV !== 'production' // No DB/SMS in dev; use demo OTP 1234
+// When USE_WHATSAPP_OTP=true, send real OTP via WhatsApp even in dev (skip bypass)
+const USE_WHATSAPP_OTP = process.env.USE_WHATSAPP_OTP === 'true'
+const DEV_BYPASS = process.env.NODE_ENV !== 'production' && !USE_WHATSAPP_OTP
 
 function generateOtp(): string {
-  if (process.env.NODE_ENV !== 'production') return DEV_OTP
+  if (process.env.NODE_ENV !== 'production' && !USE_WHATSAPP_OTP) return DEV_OTP
   return String(Math.floor(1000 + Math.random() * 9000))
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const mobile = String(body.mobile || '').replace(/\D/g, '').slice(-10)
+    const mobile = normalizeMobileForDb(body.mobile || '')
 
     if (mobile.length < 10) {
       return NextResponse.json({ error: 'Valid 10-digit mobile number required' }, { status: 400 })

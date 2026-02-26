@@ -11,7 +11,7 @@ function parseJsonArray(str: string | null): string[] {
   }
 }
 
-type SettingsRow = { brandName: string; menuLabel: string; heroVideoUrls: string | null; galleryImageUrls: string | null; invoiceWebsite: string | null; invoiceUpiId: string | null; invoiceTerms: string | null }
+type SettingsRow = { brandName: string; menuLabel: string; heroVideoUrls: string | null; galleryImageUrls: string | null; invoiceWebsite: string | null; invoiceUpiId: string | null; invoiceTerms: string | null; facebookUrl?: string | null; instagramUrl?: string | null }
 
 const DEFAULT = {
   brandName: 'Salon',
@@ -22,6 +22,8 @@ const DEFAULT = {
   invoiceWebsite: null as string | null,
   invoiceUpiId: null as string | null,
   invoiceTerms: null as string | null,
+  facebookUrl: null as string | null,
+  instagramUrl: null as string | null,
 }
 
 export async function GET() {
@@ -31,7 +33,8 @@ export async function GET() {
     try {
       rows = await prisma.$queryRaw<SettingsRow[]>`
         SELECT "brandName", "menuLabel", "heroVideoUrls", "galleryImageUrls",
-          "invoiceWebsite", "invoiceUpiId", "invoiceTerms"
+          "invoiceWebsite", "invoiceUpiId", "invoiceTerms",
+          "facebookUrl", "instagramUrl"
         FROM "SiteCustomization" WHERE id = 1 LIMIT 1
       `
     } catch {
@@ -39,7 +42,7 @@ export async function GET() {
         SELECT "brandName", "menuLabel" FROM "SiteCustomization" WHERE id = 1 LIMIT 1
       `
       if (!minimal.length) return NextResponse.json(DEFAULT)
-      const fallback = { ...DEFAULT, brandName: minimal[0].brandName, menuLabel: minimal[0].menuLabel, invoiceWebsite: null, invoiceUpiId: null, invoiceTerms: null }
+      const fallback = { ...DEFAULT, brandName: minimal[0].brandName, menuLabel: minimal[0].menuLabel, invoiceWebsite: null, invoiceUpiId: null, invoiceTerms: null, facebookUrl: null, instagramUrl: null }
       if (process.env.NEXT_PUBLIC_HERO_VIDEO_URL) {
         fallback.heroVideoUrls = [process.env.NEXT_PUBLIC_HERO_VIDEO_URL]
       }
@@ -60,6 +63,8 @@ export async function GET() {
       invoiceWebsite: s.invoiceWebsite ?? null,
       invoiceUpiId: s.invoiceUpiId ?? null,
       invoiceTerms: s.invoiceTerms ?? null,
+      facebookUrl: s.facebookUrl ?? null,
+      instagramUrl: s.instagramUrl ?? null,
     })
   } catch (error) {
     console.error('Error fetching settings:', error)

@@ -1,17 +1,20 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { normalizeMobileForDb } from '@/lib/phone'
 import { createAuthToken, getAuthCookieOptions, COOKIE_NAME } from '@/lib/auth-jwt'
 import { nanoid } from 'nanoid'
 
 const DEV_OTP = '1234'
-const DEV_BYPASS = process.env.NODE_ENV !== 'production'
+// When USE_WHATSAPP_OTP=true, verify against DB (no 1234 bypass)
+const USE_WHATSAPP_OTP = process.env.USE_WHATSAPP_OTP === 'true'
+const DEV_BYPASS = process.env.NODE_ENV !== 'production' && !USE_WHATSAPP_OTP
 
 type UserRow = { id: string; name: string; mobile: string; role: string }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const mobile = String(body.mobile || '').replace(/\D/g, '').slice(-10)
+    const mobile = normalizeMobileForDb(body.mobile || '')
     const otp = String(body.otp || '').trim()
 
     if (mobile.length < 10 || otp.length !== 4) {

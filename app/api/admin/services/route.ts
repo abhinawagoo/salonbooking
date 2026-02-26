@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url)
+    const includeInactive = searchParams.get('includeInactive') === 'true'
+
     const services = await prisma.service.findMany({
-      orderBy: {
-        createdAt: 'desc',
+      where: includeInactive ? undefined : { isActive: true },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: { select: { bookingServices: true } },
       },
     })
-    return NextResponse.json(services)
+    return NextResponse.json(services.map(({ _count, ...s }) => ({ ...s, bookingCount: _count.bookingServices })))
   } catch (error) {
     console.error('Error fetching services:', error)
     return NextResponse.json(

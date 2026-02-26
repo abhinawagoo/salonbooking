@@ -15,6 +15,7 @@ interface Service {
   isActive: boolean
   categoryId?: string | null
   subCategoryId?: string | null
+  bookingCount?: number
 }
 
 export default function AdminDashboard() {
@@ -22,16 +23,17 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingService, setEditingService] = useState<Service | null>(null)
+  const [showInactive, setShowInactive] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<Service | null>(null)
 
   useEffect(() => {
-    // Set admin role when accessing admin page
     setUserRole('ADMIN')
-    fetchServices()
   }, [])
 
   const fetchServices = async () => {
     try {
-      const response = await fetch('/api/admin/services')
+      const url = showInactive ? '/api/admin/services?includeInactive=true' : '/api/admin/services'
+      const response = await fetch(url)
       const data = await response.json()
       // Ensure data is an array
       if (Array.isArray(data)) {
@@ -48,17 +50,27 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this service?')) return
+  useEffect(() => {
+    fetchServices()
+  }, [showInactive])
 
+  const handleDeleteClick = (service: Service) => {
+    setDeleteConfirm(service)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm) return
     try {
-      await fetch(`/api/admin/services/${id}`, {
-        method: 'DELETE',
-      })
+      const res = await fetch(`/api/admin/services/${deleteConfirm.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to deactivate')
+      }
+      setDeleteConfirm(null)
       fetchServices()
     } catch (error) {
-      console.error('Error deleting service:', error)
-      alert('Failed to delete service')
+      console.error('Error deactivating service:', error)
+      alert(error instanceof Error ? error.message : 'Failed to deactivate service')
     }
   }
 
@@ -128,13 +140,27 @@ export default function AdminDashboard() {
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 className="text-lg sm:text-xl font-semibold">Services</h2>
+            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              Show inactive
+            </label>
           </div>
           {isLoading ? (
             <div className="p-6 text-center text-gray-500">Loading...</div>
           ) : services.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">No services found. Click &quot;Add Service&quot; to create one.</div>
+            <div className="p-6 text-center text-gray-500">
+              {showInactive ? 'No services found.' : 'No active services.'} Click &quot;Add Service&quot; to create one.
+              {!showInactive && (
+                <span className="block mt-2 text-sm">Toggle &quot;Show inactive&quot; to see deactivated services.</span>
+              )}
+            </div>
           ) : (
             <div className="overflow-x-auto -mx-4 sm:mx-0">
               <table className="w-full min-w-[520px]">
@@ -193,8 +219,9 @@ export default function AdminDashboard() {
                             <Edit size={18} />
                           </button>
                           <button
-                            onClick={() => handleDelete(service.id)}
+                            onClick={() => handleDeleteClick(service)}
                             className="text-red-600 hover:text-red-900 p-2"
+                            title="Deactivate service"
                           >
                             <Trash2 size={18} />
                           </button>
@@ -259,6 +286,37 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Deactivate service?</h3>
+            <p className="text-gray-600 text-sm mb-4">
+              This service cannot be permanently deleted because it has{' '}
+              <strong>{(deleteConfirm.bookingCount ?? 0)} booking(s)</strong>. Past bookings need to retain the service details.
+            </p>
+            <p className="text-gray-600 text-sm mb-6">
+              Deactivating will hide this service from customers. It will no longer appear in the booking flow. You can reactivate it anytime using the status toggle.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(null)}
+                className="px-4 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
+              >
+                Deactivate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <ServiceModal

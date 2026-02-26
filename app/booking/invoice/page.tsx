@@ -64,7 +64,7 @@ function InvoicePageContent() {
         setInvoiceSettings({
           brandName: settings.brandName,
           website: settings.invoiceWebsite,
-          terms: settings.invoiceTerms ?? 'Goods once sold will not be taken back or exchanged',
+          terms: settings.invoiceTerms ?? '',
         })
       })
       .catch((e) => setError(e.message || 'Something went wrong'))

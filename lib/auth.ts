@@ -1,7 +1,7 @@
 // Simple role-based auth helper (can be enhanced with proper OTP auth later)
 
-// TODO: Set to false when login/signup is re-enabled in the future
-export const AUTH_DISABLED_FOR_NOW = true
+// Set to false to require login before booking (OTP via WhatsApp)
+export const AUTH_DISABLED_FOR_NOW = false
 
 export type UserRole = 'CUSTOMER' | 'STAFF' | 'ADMIN'
 

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getAuthFromCookie } from '@/lib/auth-jwt'
 import { getSlotsInRange, isWithinClosingTime, MAX_BOOKINGS_PER_SLOT, parseBusinessHours, getDayConfig } from '@/lib/slots'
 import { buildBookingNotificationPayload, sendBookingNotification } from '@/lib/notify'
+import { normalizeMobileForDb } from '@/lib/phone'
 import { createPhonePePayment } from '@/lib/phonepe'
 import { nanoid } from 'nanoid'
 
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     }
 
     // Find or create user via raw SQL so we don't depend on User.email / marketingConsent columns (bypass until DB is migrated)
-    const mobile = String(customerDetails.mobile || '').replace(/\D/g, '').slice(-10)
+    const mobile = normalizeMobileForDb(customerDetails.mobile || '')
     const auth = getAuthFromCookie()
     let user: UserRow | null = null
 
@@ -231,18 +232,22 @@ export async function POST(request: Request) {
     sendBookingNotification(user.mobile, payload, 'customer').catch((e) =>
       console.error('Notify customer failed:', e)
     )
-    prisma.user
-      .findMany({ where: { role: { in: ['STAFF', 'ADMIN'] } }, select: { mobile: true } })
-      .then((staff) => {
-        staff.forEach((s) => {
-          if (s.mobile && s.mobile !== user.mobile) {
-            sendBookingNotification(s.mobile, payload, 'staff').catch((e) =>
-              console.error('Notify staff failed:', e)
-            )
-          }
+    // Skip staff notifications in dev when NOTIFY_STAFF_ON_BOOKING=false (avoids #131030 for seeded staff numbers)
+    const notifyStaff = process.env.NOTIFY_STAFF_ON_BOOKING !== 'false'
+    if (notifyStaff) {
+      prisma.user
+        .findMany({ where: { role: { in: ['STAFF', 'ADMIN'] } }, select: { mobile: true } })
+        .then((staff) => {
+          staff.forEach((s) => {
+            if (s.mobile && s.mobile !== user.mobile) {
+              sendBookingNotification(s.mobile, payload, 'staff').catch((e) =>
+                console.error('Notify staff failed:', e)
+              )
+            }
+          })
         })
-      })
-      .catch((e) => console.error('Fetch staff for notify failed:', e))
+        .catch((e) => console.error('Fetch staff for notify failed:', e))
+    }
     
     return NextResponse.json({
       bookingId: booking.id,

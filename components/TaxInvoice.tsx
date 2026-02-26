@@ -1,11 +1,11 @@
 'use client'
 
+import Link from 'next/link'
 import { numberToWords } from '@/lib/numberToWords'
 import { formatCurrency } from '@/lib/currency'
 
 const SAC_CODE = '9984'
 const GST_RATE = 0.18
-const DEFAULT_TERMS = 'Goods once sold will not be taken back or exchanged'
 
 export interface TaxInvoiceService {
   id: string
@@ -31,7 +31,7 @@ export interface TaxInvoiceData {
 }
 
 export default function TaxInvoice({ data }: { data: TaxInvoiceData }) {
-  const terms = data.terms || DEFAULT_TERMS
+  const terms = data.terms?.trim() || ''
   const amountPaid = data.amountPaid ?? 0
   const dueAmount = data.dueAmount ?? Math.max(0, data.totalAmount - amountPaid)
 
@@ -174,7 +174,13 @@ export default function TaxInvoice({ data }: { data: TaxInvoiceData }) {
       <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:gap-8 mt-4 sm:mt-5 mb-6 sm:mb-6">
         <div className="flex-1 sm:max-w-md min-w-0">
           <p className="text-xs font-medium text-gray-600 mb-1">Terms & Conditions</p>
-          <p className="text-xs sm:text-sm text-gray-600 break-words">{terms}</p>
+          {terms && <p className="text-xs sm:text-sm text-gray-600 break-words">{terms}</p>}
+          <Link
+            href="/terms"
+            className="inline-block mt-1.5 text-xs text-primary-600 hover:underline"
+          >
+            View full Terms &amp; Conditions
+          </Link>
         </div>
         <div
           className="rounded-lg p-4 shrink-0 w-full sm:w-auto sm:min-w-[220px] border border-[#E5E0D8] bg-[#FAFAF9]"
