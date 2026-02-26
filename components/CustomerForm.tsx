@@ -1,16 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MessageCircle } from 'lucide-react'
 
 interface CustomerFormProps {
   onSubmit: (data: { name: string; mobile: string; notes?: string }) => void
+  defaultName?: string
+  defaultMobile?: string
 }
 
-export default function CustomerForm({ onSubmit }: CustomerFormProps) {
-  const [name, setName] = useState('')
-  const [mobile, setMobile] = useState('')
+export default function CustomerForm({ onSubmit, defaultName = '', defaultMobile = '' }: CustomerFormProps) {
+  const [name, setName] = useState(defaultName)
+  const [mobile, setMobile] = useState(defaultMobile)
   const [notes, setNotes] = useState('')
+
+  // Pre-fill when logged-in profile loads
+  useEffect(() => {
+    if (defaultName) setName(defaultName)
+    if (defaultMobile) setMobile(defaultMobile.replace(/\D/g, '').slice(-10))
+  }, [defaultName, defaultMobile])
 
   const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value.replace(/\D/g, '').slice(0, 10)

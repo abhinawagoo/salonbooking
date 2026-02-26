@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import PaymentScreen from '@/components/PaymentScreen'
 
 interface Service {
@@ -132,11 +133,20 @@ export default function PaymentPage() {
             <p className="text-xs sm:text-sm text-gray-500 font-light">Please wait while we process your payment</p>
           </div>
         ) : (
-          <PaymentScreen
-            services={services}
-            totalAmount={totalAmount}
-            onPaymentInitiate={handlePaymentInitiate}
-          />
+          <>
+            <PaymentScreen
+              services={services}
+              totalAmount={totalAmount}
+              onPaymentInitiate={handlePaymentInitiate}
+            />
+            <p className="mt-6 pt-4 border-t border-gray-200 text-center text-xs text-gray-500">
+              <Link href="/terms" className="text-primary-600 hover:underline">Terms</Link>
+              {' · '}
+              <Link href="/privacy" className="text-primary-600 hover:underline">Privacy</Link>
+              {' · '}
+              <Link href="/refund" className="text-primary-600 hover:underline">Refund Policy</Link>
+            </p>
+          </>
         )}
       </div>
     </div>

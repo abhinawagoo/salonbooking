@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthFromCookie } from '@/lib/auth-jwt'
+import { AUTH_DISABLED_FOR_NOW } from '@/lib/auth'
 import { getSlotsInRange, isWithinClosingTime, MAX_BOOKINGS_PER_SLOT, parseBusinessHours, getDayConfig } from '@/lib/slots'
 import { buildBookingNotificationPayload, sendBookingNotification } from '@/lib/notify'
 import { normalizeMobileForDb } from '@/lib/phone'
@@ -43,9 +44,24 @@ export async function POST(request: Request) {
       )
     }
 
-    // Find or create user via raw SQL so we don't depend on User.email / marketingConsent columns (bypass until DB is migrated)
-    const mobile = normalizeMobileForDb(customerDetails.mobile || '')
+    // Require login when auth is enabled - user must create profile (verify mobile) before booking
+    const authRequired = !AUTH_DISABLED_FOR_NOW && process.env.NEXT_PUBLIC_DISABLE_AUTH !== 'true'
     const auth = getAuthFromCookie()
+    if (authRequired && !auth) {
+      return NextResponse.json(
+        { error: 'Please login to book an appointment. Verify your mobile number first.' },
+        { status: 401 }
+      )
+    }
+
+    const mobile = normalizeMobileForDb(customerDetails.mobile || '')
+    if (authRequired && auth && auth.mobile !== mobile) {
+      return NextResponse.json(
+        { error: 'Booking must be made with your verified mobile number. Please use the same number you logged in with.' },
+        { status: 400 }
+      )
+    }
+
     let user: UserRow | null = null
 
     if (auth && auth.mobile === mobile) {
@@ -61,6 +77,13 @@ export async function POST(request: Request) {
       if (byMobile.length > 0) user = byMobile[0]
     }
     if (!user) {
+      // When auth required, user must exist (created via login) - no auto-create
+      if (authRequired) {
+        return NextResponse.json(
+          { error: 'Please login first to book an appointment. Verify your mobile number.' },
+          { status: 401 }
+        )
+      }
       const id = nanoid(24)
       await prisma.$executeRaw`
         INSERT INTO "User" (id, name, mobile, role, "createdAt", "updatedAt")
