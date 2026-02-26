@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
+// Cache for 60s: good performance + data updates within 1 min when admin deactivates services
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+}
+
 export async function GET() {
   try {
     const categories = await prisma.category.findMany({
@@ -23,7 +30,7 @@ export async function GET() {
       },
       orderBy: { order: 'asc' },
     })
-    return NextResponse.json(categories)
+    return NextResponse.json(categories, { headers: CACHE_HEADERS })
   } catch (error) {
     console.error('Error fetching categories:', error)
     return NextResponse.json(

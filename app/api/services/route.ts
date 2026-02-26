@@ -3,6 +3,11 @@ import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
+// Cache for 60s: good performance + data updates within 1 min when admin deactivates services
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+}
+
 export async function GET(request: Request) {
   try {
     if (!prisma?.service) {
@@ -20,7 +25,7 @@ export async function GET(request: Request) {
       orderBy: { name: 'asc' },
     })
 
-    return NextResponse.json(services)
+    return NextResponse.json(services, { headers: CACHE_HEADERS })
   } catch (error) {
     console.error('Error fetching services:', error)
     return NextResponse.json(
