@@ -34,6 +34,12 @@ export async function POST(request: NextRequest) {
     const address = (body.address ?? '').trim() || undefined
     const mobile = (body.mobile ?? '').toString().trim() || null
     const imageUrl = (body.imageUrl ?? '').toString().trim() || null
+    const businessHoursJson = body.businessHoursJson !== undefined && body.businessHoursJson !== null
+      ? String(body.businessHoursJson).trim() || null
+      : null
+    const closedDatesJson = body.closedDatesJson !== undefined && body.closedDatesJson !== null
+      ? String(body.closedDatesJson).trim() || null
+      : null
     if (!name) {
       return NextResponse.json(
         { error: 'Location name is required' },
@@ -54,6 +60,8 @@ export async function POST(request: NextRequest) {
         address: address || null,
         mobile,
         imageUrl,
+        businessHoursJson,
+        closedDatesJson,
         isActive: true,
       },
     })

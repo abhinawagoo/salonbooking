@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthFromCookie } from '@/lib/auth-jwt'
-import { getSlotsInRange, isWithinClosingTime, MAX_BOOKINGS_PER_SLOT } from '@/lib/slots'
+import { getSlotsInRange, isWithinClosingTime, MAX_BOOKINGS_PER_SLOT, parseBusinessHours, getDayConfig } from '@/lib/slots'
 import { buildBookingNotificationPayload, sendBookingNotification } from '@/lib/notify'
 import { createPhonePePayment } from '@/lib/phonepe'
 import { nanoid } from 'nanoid'
@@ -91,8 +91,39 @@ export async function POST(request: Request) {
     // Total service duration (minutes)
     const totalDurationMinutes = Math.max(30, serviceDetails.reduce((sum, s) => sum + s.duration, 0))
 
-    // Validate: service must finish by closing + buffer
-    if (!isWithinClosingTime(timeSlot, totalDurationMinutes)) {
+    // Validate: day is open and time is within business hours (per location)
+    const bookingDate = new Date(date)
+    const dayOfWeek = bookingDate.getDay()
+    const locationWithHours = await prisma.location.findUnique({
+      where: { id: locationId },
+      select: { businessHoursJson: true, closedDatesJson: true },
+    })
+    const businessHours = parseBusinessHours(locationWithHours?.businessHoursJson ?? null)
+    const closedDates: string[] = (() => {
+      if (!locationWithHours?.closedDatesJson) return []
+      try {
+        const parsed = JSON.parse(locationWithHours.closedDatesJson)
+        return Array.isArray(parsed) ? parsed.map(String) : []
+      } catch {
+        return []
+      }
+    })()
+    const bookingDateStr = bookingDate.toISOString().slice(0, 10)
+    if (closedDates.includes(bookingDateStr)) {
+      return NextResponse.json(
+        { error: 'The salon is closed on this date. Please choose another date.' },
+        { status: 400 }
+      )
+    }
+    const dayConfig = getDayConfig(businessHours, dayOfWeek)
+    if (!dayConfig.isOpen) {
+      return NextResponse.json(
+        { error: 'The salon is closed on this day. Please choose another date.' },
+        { status: 400 }
+      )
+    }
+    const closeTime = dayConfig.closeTime || '18:00'
+    if (!isWithinClosingTime(timeSlot, totalDurationMinutes, closeTime)) {
       return NextResponse.json(
         { error: 'Selected time would end after salon closing. Please choose an earlier slot.' },
         { status: 400 }

@@ -13,12 +13,20 @@ export async function PATCH(
     const address = body.address !== undefined ? (body.address ?? '').toString().trim() || null : undefined
     const mobile = body.mobile !== undefined ? (body.mobile ?? '').toString().trim() || null : undefined
     const imageUrl = body.imageUrl !== undefined ? (body.imageUrl ?? '').toString().trim() || null : undefined
+    const businessHoursJson = body.businessHoursJson !== undefined && body.businessHoursJson !== null
+      ? String(body.businessHoursJson).trim() || null
+      : undefined
+    const closedDatesJson = body.closedDatesJson !== undefined && body.closedDatesJson !== null
+      ? String(body.closedDatesJson).trim() || null
+      : undefined
 
-    const updateData: { name?: string; address?: string | null; mobile?: string | null; imageUrl?: string | null } = {}
+    const updateData: { name?: string; address?: string | null; mobile?: string | null; imageUrl?: string | null; businessHoursJson?: string | null; closedDatesJson?: string | null } = {}
     if (name) updateData.name = name
     if (address !== undefined) updateData.address = address
     if (mobile !== undefined) updateData.mobile = mobile
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl
+    if (businessHoursJson !== undefined) updateData.businessHoursJson = businessHoursJson
+    if (closedDatesJson !== undefined) updateData.closedDatesJson = closedDatesJson
 
     const location = await prisma.location.update({
       where: { id },

@@ -28,14 +28,17 @@ export async function GET(request: Request) {
       ...(locationId ? { locationId } : {}),
     }
 
-    const bookings = await prisma.booking.findMany({
-      where,
-      select: {
-        date: true,
-        timeSlot: true,
-        durationMinutes: true,
-      },
-    })
+    const [bookings, location] = await Promise.all([
+      prisma.booking.findMany({
+        where,
+        select: {
+          date: true,
+          timeSlot: true,
+          durationMinutes: true,
+        },
+      }),
+      locationId ? prisma.location.findUnique({ where: { id: locationId }, select: { businessHoursJson: true, closedDatesJson: true } }) : Promise.resolve(null),
+    ])
 
     // Per-slot occupancy: each booking occupies every 30-min slot in [timeSlot, timeSlot + durationMinutes)
     const slotCounts: Record<string, number> = {}
@@ -49,7 +52,11 @@ export async function GET(request: Request) {
       })
     })
 
-    return NextResponse.json(slotCounts)
+    return NextResponse.json({
+      slotCounts,
+      businessHours: location?.businessHoursJson ?? null,
+      closedDates: location?.closedDatesJson ?? null,
+    })
   } catch (error) {
     console.error('Error fetching slot availability:', error)
     return NextResponse.json(

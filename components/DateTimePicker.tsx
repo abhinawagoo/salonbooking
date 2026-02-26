@@ -1,60 +1,92 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { format, addDays, isSameDay, startOfDay, isBefore, isAfter, setHours, setMinutes } from 'date-fns'
-import { TIME_SLOTS, getSlotsInRange, isWithinClosingTime, MAX_BOOKINGS_PER_SLOT, CLOSING_TIME } from '@/lib/slots'
+import { TIME_SLOTS, getSlotsInRange, isWithinClosingTime, MAX_BOOKINGS_PER_SLOT, parseBusinessHours, getDayConfig, getSlotsBetween } from '@/lib/slots'
 
 interface DateTimePickerProps {
   onSelect: (date: Date, timeSlot: string) => void
   slotCounts?: Record<string, number>
   /** Total service duration in minutes. Used to block slots so the appointment fits before closing. */
   durationMinutes?: number
+  /** JSON string of business hours from admin. When null, uses default (Mon-Sat 9-6). */
+  businessHoursJson?: string | null
+  /** JSON array of closed dates (yyyy-MM-dd). When null, no specific dates are closed. */
+  closedDatesJson?: string | null
 }
 
-export default function DateTimePicker({ onSelect, slotCounts = {}, durationMinutes = 30 }: DateTimePickerProps) {
+export default function DateTimePicker({ onSelect, slotCounts = {}, durationMinutes = 30, businessHoursJson, closedDatesJson }: DateTimePickerProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
 
   const duration = Math.max(30, durationMinutes)
   const availableDates = Array.from({ length: 30 }, (_, i) => addDays(new Date(), i))
 
-  // Check if date is closed (past dates or past closing time today)
+  const businessHours = useMemo(() => parseBusinessHours(businessHoursJson ?? null), [businessHoursJson])
+  const closedDates = useMemo((): string[] => {
+    if (!closedDatesJson) return []
+    try {
+      const parsed = JSON.parse(closedDatesJson)
+      return Array.isArray(parsed) ? parsed.map(String) : []
+    } catch {
+      return []
+    }
+  }, [closedDatesJson])
+
+  // Get time slots to show for a given date (based on open/close for that day)
+  const getTimeSlotsForDate = (date: Date): string[] => {
+    const dayOfWeek = date.getDay()
+    const dayConfig = getDayConfig(businessHours, dayOfWeek)
+    if (!dayConfig.isOpen || !dayConfig.openTime || !dayConfig.closeTime) return []
+    const allSlots = getSlotsBetween(dayConfig.openTime, dayConfig.closeTime)
+    return allSlots.filter((slot) => isWithinClosingTime(slot, duration, dayConfig.closeTime))
+  }
+
+  // Check if date is closed (past dates, closed day, specific closed dates, or past closing time today)
   const isDateClosed = (date: Date) => {
     const today = new Date()
     const dateStart = startOfDay(date)
     const todayStart = startOfDay(today)
     
     // Past dates are closed
-    if (isBefore(dateStart, todayStart)) {
-      return true
-    }
+    if (isBefore(dateStart, todayStart)) return true
+    
+    // Admin-defined closed dates (festivals, holidays, etc.)
+    const dateStr = format(date, 'yyyy-MM-dd')
+    if (closedDates.includes(dateStr)) return true
+    
+    const dayOfWeek = date.getDay()
+    const dayConfig = getDayConfig(businessHours, dayOfWeek)
+    if (!dayConfig.isOpen) return true
     
     // Today: check if current time is past closing time
     if (isSameDay(date, today)) {
       const now = new Date()
-      const closingTime = setMinutes(setHours(new Date(now), CLOSING_TIME.hour), CLOSING_TIME.minute)
+      const [ch, cm] = (dayConfig.closeTime || '18:00').split(':').map(Number)
+      const closingTime = setMinutes(setHours(new Date(now), ch), cm)
       return isAfter(now, closingTime)
     }
     
     return false
   }
 
-  // Get booking count for a slot
   const getSlotBookingCount = (date: Date, timeSlot: string): number => {
     const dateStr = format(date, 'yyyy-MM-dd')
     const key = `${dateStr}_${timeSlot}`
     return slotCounts[key] || 0
   }
 
-  /** Slot S is available for *starting* only if service would end by closing+buffer and every slot in [S, S+duration) has capacity. */
   const isSlotAvailable = (date: Date, timeSlot: string): boolean => {
     if (isDateClosed(date)) return false
-    if (!isWithinClosingTime(timeSlot, duration)) return false
+    const dayConfig = getDayConfig(businessHours, date.getDay())
+    const closeTime = dayConfig.closeTime || '18:00'
+    if (!isWithinClosingTime(timeSlot, duration, closeTime)) return false
     if (isSameDay(date, new Date())) {
       const now = new Date()
       const [hours, minutes] = timeSlot.split(':').map(Number)
       const slotTime = setMinutes(setHours(new Date(now), hours), minutes)
-      const closingTime = setMinutes(setHours(new Date(now), CLOSING_TIME.hour), CLOSING_TIME.minute)
+      const [ch, cm] = closeTime.split(':').map(Number)
+      const closingTime = setMinutes(setHours(new Date(now), ch), cm)
       if (isAfter(slotTime, closingTime) || isAfter(now, slotTime)) return false
     }
     const slotsInRange = getSlotsInRange(timeSlot, duration)
@@ -63,12 +95,15 @@ export default function DateTimePicker({ onSelect, slotCounts = {}, durationMinu
 
   const getSlotStatus = (date: Date, timeSlot: string): 'available' | 'limited' | 'full' | 'closed' => {
     if (isDateClosed(date)) return 'closed'
-    if (!isWithinClosingTime(timeSlot, duration)) return 'closed'
+    const dayConfig = getDayConfig(businessHours, date.getDay())
+    const closeTime = dayConfig.closeTime || '18:00'
+    if (!isWithinClosingTime(timeSlot, duration, closeTime)) return 'closed'
     if (isSameDay(date, new Date())) {
       const now = new Date()
       const [hours, minutes] = timeSlot.split(':').map(Number)
       const slotTime = setMinutes(setHours(new Date(now), hours), minutes)
-      const closingTime = setMinutes(setHours(new Date(now), CLOSING_TIME.hour), CLOSING_TIME.minute)
+      const [ch, cm] = closeTime.split(':').map(Number)
+      const closingTime = setMinutes(setHours(new Date(now), ch), cm)
       if (isAfter(slotTime, closingTime) || isAfter(now, slotTime)) return 'closed'
     }
     const slotsInRange = getSlotsInRange(timeSlot, duration)
@@ -150,7 +185,7 @@ export default function DateTimePicker({ onSelect, slotCounts = {}, durationMinu
             </div>
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
-            {TIME_SLOTS.map((timeSlot) => {
+            {(selectedDate ? getTimeSlotsForDate(selectedDate) : []).map((timeSlot) => {
               const status = getSlotStatus(selectedDate, timeSlot)
               const count = getSlotBookingCount(selectedDate, timeSlot)
               const isSelected = selectedTime === timeSlot

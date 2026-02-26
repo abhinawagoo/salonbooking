@@ -15,8 +15,6 @@ function ConfirmationPageContent() {
   const searchParams = useSearchParams()
   const [bookingData, setBookingData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [redirectCountdown, setRedirectCountdown] = useState(10)
-
   // Clear all session storage and prevent back navigation
   useEffect(() => {
     // Clear all booking-related session storage immediately
@@ -49,23 +47,6 @@ function ConfirmationPageContent() {
       window.removeEventListener('beforeunload', handleBeforeUnload)
     }
   }, [router])
-
-  // Auto-redirect to homepage after 10 seconds
-  useEffect(() => {
-    if (!isLoading && bookingData) {
-      const timer = setInterval(() => {
-        setRedirectCountdown((prev) => {
-          if (prev <= 1) {
-            router.replace('/')
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-
-      return () => clearInterval(timer)
-    }
-  }, [isLoading, bookingData, router])
 
   useEffect(() => {
     const bookingId = searchParams.get('bookingId')
@@ -148,7 +129,6 @@ function ConfirmationPageContent() {
         locationAddress={bookingData.locationAddress}
         locationMobile={bookingData.locationMobile}
         locationImageUrl={bookingData.locationImageUrl}
-        redirectCountdown={redirectCountdown}
       />
     </div>
   )

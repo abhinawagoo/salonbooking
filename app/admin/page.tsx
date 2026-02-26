@@ -298,8 +298,8 @@ function ServiceModal({ service, onClose, onSave }: { service: Service | null; o
   const [formData, setFormData] = useState({
     name: service?.name || '',
     description: service?.description || '',
-    price: service?.price || 0,
-    duration: service?.duration || 30,
+    price: service?.price ?? '',
+    duration: service?.duration ?? '',
     imageUrl: service?.imageUrl || '',
     categoryId: service?.categoryId ?? '',
     subCategoryId: service?.subCategoryId ?? '',
@@ -317,7 +317,6 @@ function ServiceModal({ service, onClose, onSave }: { service: Service | null; o
     if (service) {
       let categoryId = service.categoryId ?? ''
       const subCategoryId = service.subCategoryId ?? ''
-      // If service has subcategory but no category, derive category from subcategory (fixes data inconsistency)
       if (subCategoryId && !categoryId && categories.length > 0) {
         for (const cat of categories) {
           const found = cat.subcategories?.some((s) => s.id === subCategoryId)
@@ -327,14 +326,27 @@ function ServiceModal({ service, onClose, onSave }: { service: Service | null; o
           }
         }
       }
-      setFormData((f) => ({
-        ...f,
+      setFormData({
+        name: service.name || '',
+        description: service.description || '',
+        price: service.price ?? '',
+        duration: service.duration ?? '',
+        imageUrl: service.imageUrl ?? '',
         categoryId,
         subCategoryId,
-        imageUrl: service.imageUrl ?? '',
-      }))
+      })
+    } else {
+      setFormData({
+        name: '',
+        description: '',
+        price: '',
+        duration: '',
+        imageUrl: '',
+        categoryId: '',
+        subCategoryId: '',
+      })
     }
-  }, [service?.id, service?.categoryId, service?.subCategoryId, service?.imageUrl, categories])
+  }, [service?.id, service?.name, service?.description, service?.price, service?.duration, service?.categoryId, service?.subCategoryId, service?.imageUrl, categories])
 
   const deleteImageFromStorage = async (url: string) => {
     try {
@@ -380,6 +392,12 @@ function ServiceModal({ service, onClose, onSave }: { service: Service | null; o
       alert('Please select a subcategory. Services belong under subcategories.')
       return
     }
+    const price = formData.price === '' || formData.price === undefined ? 0 : Number(formData.price)
+    const duration = formData.duration === '' || formData.duration === undefined ? 30 : Math.max(1, parseInt(String(formData.duration), 10) || 30)
+    if (price < 0 || duration < 1) {
+      alert('Please enter valid price and duration.')
+      return
+    }
     setIsSubmitting(true)
     try {
       const url = service 
@@ -389,7 +407,7 @@ function ServiceModal({ service, onClose, onSave }: { service: Service | null; o
       const response = await fetch(url, {
         method: service ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, price, duration }),
       })
 
       if (!response.ok) {
@@ -441,8 +459,8 @@ function ServiceModal({ service, onClose, onSave }: { service: Service | null; o
                   required
                   min="0"
                   step="0.01"
-                  value={formData.price || ''}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value ? parseFloat(e.target.value) : 0 })}
+                  value={formData.price === '' || formData.price === undefined ? '' : formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value === '' ? '' : parseFloat(e.target.value) || 0 })}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent transition-all font-light text-lg"
                   placeholder="0.00"
                 />
@@ -453,8 +471,8 @@ function ServiceModal({ service, onClose, onSave }: { service: Service | null; o
                   type="number"
                   required
                   min="1"
-                  value={formData.duration || ''}
-                  onChange={(e) => setFormData({ ...formData, duration: e.target.value ? parseInt(e.target.value) : 30 })}
+                  value={formData.duration === '' || formData.duration === undefined ? '' : formData.duration}
+                  onChange={(e) => setFormData({ ...formData, duration: e.target.value === '' ? '' : (parseInt(e.target.value, 10) || 0) })}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent transition-all font-light text-lg"
                   placeholder="30"
                 />

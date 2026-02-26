@@ -1,9 +1,12 @@
 /**
  * Booking notifications: WhatsApp (template) or SMS with bill link.
  * Supports:
+ * - WhatsApp Cloud API (direct, no BSP): Preferred when WHATSAPP_ACCESS_TOKEN + WHATSAPP_PHONE_NUMBER_ID set.
  * - MSG91 (India): WhatsApp + SMS, cheap, no markup over Meta for WhatsApp.
  * - 360dialog: Direct Meta BSP, WhatsApp only (use MSG91 for SMS fallback).
  */
+
+import { sendBookingConfirmationWhatsApp } from './whatsapp-cloud'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
@@ -141,9 +144,13 @@ function getProvider(): NotifyProvider | null {
   return null
 }
 
+function isWhatsAppCloudConfigured(): boolean {
+  return !!(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID)
+}
+
 /**
  * Send booking notification to one recipient (customer or staff).
- * Prefer WhatsApp template if configured and provider supports it; else SMS.
+ * Prefer WhatsApp Cloud API (direct) when configured; else MSG91/360dialog; fallback SMS.
  */
 export async function sendBookingNotification(
   mobile: string,
@@ -151,43 +158,56 @@ export async function sendBookingNotification(
   recipientType: 'customer' | 'staff'
 ): Promise<{ whatsapp: boolean; sms: boolean }> {
   const result = { whatsapp: false, sms: false }
-  const provider = getProvider()
-  if (!provider) {
-    console.warn('No NOTIFY_PROVIDER or MSG91/360dialog keys set, skipping notification')
-    return result
-  }
-
-  const isStaff = recipientType === 'staff'
   const invoiceLink = payload.invoiceLink || buildInvoiceLink(payload.bookingToken)
+  const isStaff = recipientType === 'staff'
   const smsMessage = buildSmsMessage({ ...payload, invoiceLink }, isStaff)
 
-  // Try WhatsApp first (template with booking details + link)
-  const templateName = process.env.NOTIFY_WHATSAPP_TEMPLATE_NAME || 'booking_confirmation'
-  const templateParams = [
-    payload.customerName,
-    payload.bookingToken,
-    payload.date,
-    payload.timeSlot,
-    payload.servicesSummary,
-    `₹${payload.totalAmount}`,
-    invoiceLink,
-  ]
-
-  if (provider === '360dialog') {
-    result.whatsapp = await sendWhatsApp360dialog(mobile, templateName, templateParams)
-  } else if (provider === 'msg91' && process.env.MSG91_WHATSAPP_TEMPLATE_ID) {
-    result.whatsapp = await sendWhatsAppMsg91(mobile, process.env.MSG91_WHATSAPP_TEMPLATE_ID, {
-      '1': payload.customerName,
-      '2': payload.bookingToken,
-      '3': payload.date,
-      '4': payload.timeSlot,
-      '5': payload.servicesSummary,
-      '6': `₹${payload.totalAmount}`,
-      '7': invoiceLink,
-    })
+  // 1. Try WhatsApp Cloud API first (direct, no BSP)
+  if (isWhatsAppCloudConfigured()) {
+    const wa = await sendBookingConfirmationWhatsApp(
+      mobile,
+      payload.customerName,
+      payload.bookingToken,
+      payload.date,
+      payload.timeSlot,
+      payload.servicesSummary,
+      `₹${payload.totalAmount}`,
+      invoiceLink
+    )
+    result.whatsapp = wa.ok
   }
 
-  // Fallback or primary: SMS (MSG91)
+  // 2. Fallback to BSP (MSG91 / 360dialog) if WhatsApp Cloud not used or failed
+  if (!result.whatsapp) {
+    const provider = getProvider()
+    if (provider) {
+      const templateName = process.env.NOTIFY_WHATSAPP_TEMPLATE_NAME || 'booking_confirmation'
+      const templateParams = [
+        payload.customerName,
+        payload.bookingToken,
+        payload.date,
+        payload.timeSlot,
+        payload.servicesSummary,
+        `₹${payload.totalAmount}`,
+        invoiceLink,
+      ]
+      if (provider === '360dialog') {
+        result.whatsapp = await sendWhatsApp360dialog(mobile, templateName, templateParams)
+      } else if (provider === 'msg91' && process.env.MSG91_WHATSAPP_TEMPLATE_ID) {
+        result.whatsapp = await sendWhatsAppMsg91(mobile, process.env.MSG91_WHATSAPP_TEMPLATE_ID, {
+          '1': payload.customerName,
+          '2': payload.bookingToken,
+          '3': payload.date,
+          '4': payload.timeSlot,
+          '5': payload.servicesSummary,
+          '6': `₹${payload.totalAmount}`,
+          '7': invoiceLink,
+        })
+      }
+    }
+  }
+
+  // 3. SMS fallback (MSG91)
   if (!result.whatsapp || process.env.NOTIFY_ALWAYS_SMS === 'true') {
     result.sms = await sendSmsMsg91(mobile, smsMessage)
   }

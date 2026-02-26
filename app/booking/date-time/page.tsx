@@ -9,6 +9,8 @@ export default function DateTimePage() {
   const router = useRouter()
   const [hasData, setHasData] = useState(false)
   const [slotCounts, setSlotCounts] = useState<Record<string, number>>({})
+  const [businessHours, setBusinessHours] = useState<string | null>(null)
+  const [closedDates, setClosedDates] = useState<string | null>(null)
   const [isLoadingSlots, setIsLoadingSlots] = useState(true)
 
   const [totalDurationMinutes, setTotalDurationMinutes] = useState(30)
@@ -34,7 +36,9 @@ export default function DateTimePage() {
         `/api/slots/availability?startDate=${startDate}&endDate=${endDate}&locationId=${encodeURIComponent(locationId)}`
       )
       const data = await response.json()
-      setSlotCounts(data)
+      setSlotCounts(data.slotCounts ?? data)
+      setBusinessHours(data.businessHours ?? null)
+      setClosedDates(data.closedDates ?? null)
     } catch (error) {
       console.error('Error fetching slot availability:', error)
     } finally {
@@ -71,7 +75,7 @@ export default function DateTimePage() {
               <p className="mt-4 text-gray-600">Loading availability...</p>
             </div>
           ) : (
-            <DateTimePicker onSelect={handleSelect} slotCounts={slotCounts} durationMinutes={totalDurationMinutes} />
+            <DateTimePicker onSelect={handleSelect} slotCounts={slotCounts} durationMinutes={totalDurationMinutes} businessHoursJson={businessHours} closedDatesJson={closedDates} />
           )}
         </div>
       </div>

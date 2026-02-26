@@ -157,3 +157,30 @@ export async function sendInvoiceWhatsApp(
   const templateName = process.env.WHATSAPP_INVOICE_TEMPLATE_NAME || 'invoice_ready'
   return sendWhatsAppTemplate(mobile, templateName, [customerName, invoiceLink])
 }
+
+/**
+ * Send booking confirmation to customer via WhatsApp Cloud API (direct, no BSP).
+ * Template body params: {{1}} name, {{2}} token, {{3}} date, {{4}} time, {{5}} services, {{6}} amount, {{7}} invoice link.
+ * Create template in Meta: "Hi {{1}}, your booking is confirmed. Token: {{2}}. Date: {{3}} at {{4}}. Services: {{5}}. Total: {{6}}. View invoice: {{7}}"
+ */
+export async function sendBookingConfirmationWhatsApp(
+  mobile: string,
+  customerName: string,
+  bookingToken: string,
+  date: string,
+  timeSlot: string,
+  servicesSummary: string,
+  totalAmount: string,
+  invoiceLink: string
+): Promise<{ ok: boolean; error?: string }> {
+  const templateName = process.env.WHATSAPP_BOOKING_TEMPLATE_NAME || 'booking_confirmation'
+  return sendWhatsAppTemplate(mobile, templateName, [
+    customerName,
+    bookingToken,
+    date,
+    timeSlot,
+    servicesSummary,
+    totalAmount,
+    invoiceLink,
+  ])
+}

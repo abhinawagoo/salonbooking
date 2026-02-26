@@ -4,14 +4,18 @@
 
 export const SLOT_INTERVAL_MINUTES = 30
 
-export const TIME_SLOTS = [
-  '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
-  '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
-  '18:00', '18:30', '19:00', '19:30',
-]
+/** Full range 6:00–22:00 for custom business hours support. */
+const TIME_SLOTS_RAW: string[] = []
+for (let h = 6; h <= 22; h++) {
+  for (let m = 0; m < 60; m += 30) {
+    if (h === 22 && m > 0) break
+    TIME_SLOTS_RAW.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+  }
+}
 
-/** Salon closing time (6 PM). Bookings must *finish* by closing + buffer. */
+export const TIME_SLOTS = TIME_SLOTS_RAW
+
+/** Default closing time (6 PM). Used when no business hours configured. */
 export const CLOSING_TIME = { hour: 18, minute: 0 }
 
 /** Extra minutes after closing the salon can work (e.g. finish last appointment). */
@@ -19,10 +23,52 @@ export const CLOSING_BUFFER_MINUTES = 60
 
 export const MAX_BOOKINGS_PER_SLOT = 3
 
-/**
- * Get all 30-min slot strings that fall within [startSlot, startSlot + durationMinutes).
- * e.g. getSlotsInRange('10:00', 90) => ['10:00', '10:30', '11:00']
- */
+export type BusinessHoursDay = {
+  dayOfWeek: number // 0=Sunday, 1=Monday, ..., 6=Saturday
+  isOpen: boolean
+  openTime?: string // "09:00"
+  closeTime?: string // "18:00"
+}
+
+const DEFAULT_BUSINESS_HOURS: BusinessHoursDay[] = [
+  { dayOfWeek: 0, isOpen: false },
+  { dayOfWeek: 1, isOpen: true, openTime: '09:00', closeTime: '18:00' },
+  { dayOfWeek: 2, isOpen: true, openTime: '09:00', closeTime: '18:00' },
+  { dayOfWeek: 3, isOpen: true, openTime: '09:00', closeTime: '18:00' },
+  { dayOfWeek: 4, isOpen: true, openTime: '09:00', closeTime: '18:00' },
+  { dayOfWeek: 5, isOpen: true, openTime: '09:00', closeTime: '18:00' },
+  { dayOfWeek: 6, isOpen: true, openTime: '09:00', closeTime: '18:00' },
+]
+
+export function parseBusinessHours(json: string | null | undefined): BusinessHoursDay[] {
+  if (!json) return DEFAULT_BUSINESS_HOURS
+  try {
+    const arr = JSON.parse(json)
+    if (!Array.isArray(arr) || arr.length === 0) return DEFAULT_BUSINESS_HOURS
+    const result: BusinessHoursDay[] = []
+    for (let d = 0; d <= 6; d++) {
+      const found = arr.find((x: { dayOfWeek?: number }) => x?.dayOfWeek === d)
+      if (found && typeof found.isOpen === 'boolean') {
+        result.push({
+          dayOfWeek: d,
+          isOpen: found.isOpen,
+          openTime: found.openTime || '09:00',
+          closeTime: found.closeTime || '18:00',
+        })
+      } else {
+        result.push(DEFAULT_BUSINESS_HOURS[d] ?? { dayOfWeek: d, isOpen: false })
+      }
+    }
+    return result.length > 0 ? result : DEFAULT_BUSINESS_HOURS
+  } catch {
+    return DEFAULT_BUSINESS_HOURS
+  }
+}
+
+export function getDayConfig(hours: BusinessHoursDay[], dayOfWeek: number): BusinessHoursDay {
+  return hours.find((h) => h.dayOfWeek === dayOfWeek) ?? { dayOfWeek, isOpen: false }
+}
+
 export function getSlotsInRange(startSlot: string, durationMinutes: number): string[] {
   const slots: string[] = []
   const idx = TIME_SLOTS.indexOf(startSlot)
@@ -36,15 +82,26 @@ export function getSlotsInRange(startSlot: string, durationMinutes: number): str
 
 /**
  * Check if a booking ending at (startSlot + durationMinutes) is within closing + buffer.
- * Uses TIME_SLOTS to resolve end slot; if end would be past last slot, invalid.
+ * Uses TIME_SLOTS. When closeTime provided, service must finish by closeTime.
  */
-/** Service must finish by closing + buffer. Last allowed end slot is 19:00 (18:00 + 60 min buffer). */
-export function isWithinClosingTime(startSlot: string, durationMinutes: number): boolean {
+export function isWithinClosingTime(
+  startSlot: string,
+  durationMinutes: number,
+  closeTime?: string
+): boolean {
   const slots = getSlotsInRange(startSlot, durationMinutes)
   if (slots.length === 0) return false
   const lastSlot = slots[slots.length - 1]
   const lastIdx = TIME_SLOTS.indexOf(lastSlot)
-  const maxEndSlotIndex = TIME_SLOTS.indexOf('19:00') // 19:00 = 18:00 + 60 min buffer
-  if (maxEndSlotIndex === -1) return lastIdx <= TIME_SLOTS.length - 1
-  return lastIdx <= maxEndSlotIndex
+  const maxEnd = closeTime ? TIME_SLOTS.indexOf(closeTime) : TIME_SLOTS.indexOf('19:00')
+  const maxEndIdx = maxEnd >= 0 ? maxEnd : TIME_SLOTS.length - 1
+  return lastIdx <= maxEndIdx
+}
+
+/** Get slots between openTime and closeTime (exclusive of close). */
+export function getSlotsBetween(openTime: string, closeTime: string): string[] {
+  const startIdx = TIME_SLOTS.indexOf(openTime)
+  const endIdx = TIME_SLOTS.indexOf(closeTime)
+  if (startIdx < 0 || endIdx < 0 || startIdx >= endIdx) return []
+  return TIME_SLOTS.slice(startIdx, endIdx)
 }

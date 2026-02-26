@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { format, isToday, isAfter } from 'date-fns'
 import Link from 'next/link'
-import { CheckCircle, Clock, Phone, User, Banknote, Download, Copy, MapPin, BarChart3 } from 'lucide-react'
+import { CheckCircle, Clock, Phone, User, Banknote, Download, Copy, MapPin, BarChart3, Edit3 } from 'lucide-react'
 import { setUserRole } from '@/lib/auth'
 
 interface Location {
@@ -48,8 +48,10 @@ export default function StaffDashboard() {
   const [todayBookings, setTodayBookings] = useState<Booking[]>([])
   const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [cashModal, setCashModal] = useState<Booking | null>(null)
+  const [paymentModal, setPaymentModal] = useState<{ booking: Booking; mode: 'add_cash' | 'edit' } | null>(null)
   const [cashInput, setCashInput] = useState('')
+  const [editOnline, setEditOnline] = useState('')
+  const [editCash, setEditCash] = useState('')
   const [paymentSaving, setPaymentSaving] = useState(false)
   const [copiedMobile, setCopiedMobile] = useState<string | null>(null)
 
@@ -170,8 +172,27 @@ export default function StaffDashboard() {
     }
   }
 
+  const openAddCashModal = (booking: Booking) => {
+    setPaymentModal({ booking, mode: 'add_cash' })
+    setCashInput('')
+  }
+
+  const openEditPaymentModal = (booking: Booking) => {
+    setPaymentModal({ booking, mode: 'edit' })
+    const p = booking.payment
+    setEditOnline(String(p?.onlineAmount ?? 0))
+    setEditCash(String(p?.cashAmount ?? 0))
+  }
+
+  const closePaymentModal = () => {
+    setPaymentModal(null)
+    setCashInput('')
+    setEditOnline('')
+    setEditCash('')
+  }
+
   const handleRecordCash = async () => {
-    if (!cashModal) return
+    if (!paymentModal || paymentModal.mode !== 'add_cash') return
     const amount = parseFloat(cashInput)
     if (isNaN(amount) || amount <= 0) {
       alert('Enter a valid amount')
@@ -179,7 +200,7 @@ export default function StaffDashboard() {
     }
     setPaymentSaving(true)
     try {
-      const res = await fetch(`/api/booking/${cashModal.id}/payment`, {
+      const res = await fetch(`/api/booking/${paymentModal.booking.id}/payment`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ addCash: amount }),
@@ -188,11 +209,38 @@ export default function StaffDashboard() {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || 'Failed to record cash')
       }
-      setCashModal(null)
-      setCashInput('')
+      closePaymentModal()
       fetchBookings()
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Failed to record cash')
+    } finally {
+      setPaymentSaving(false)
+    }
+  }
+
+  const handleSaveEditPayment = async () => {
+    if (!paymentModal || paymentModal.mode !== 'edit') return
+    const online = parseFloat(editOnline)
+    const cash = parseFloat(editCash)
+    if (isNaN(online) || isNaN(cash) || online < 0 || cash < 0) {
+      alert('Enter valid amounts (non-negative numbers)')
+      return
+    }
+    setPaymentSaving(true)
+    try {
+      const res = await fetch(`/api/booking/${paymentModal.booking.id}/payment`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ onlineAmount: online, cashAmount: cash }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed to update payment')
+      }
+      closePaymentModal()
+      fetchBookings()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to update payment')
     } finally {
       setPaymentSaving(false)
     }
@@ -300,14 +348,24 @@ export default function StaffDashboard() {
               {booking.payment?.paymentStatus || 'PENDING'}
             </span>
             {booking.payment && (
-              <button
-                type="button"
-                onClick={() => { setCashModal(booking); setCashInput('') }}
-                className="inline-flex items-center gap-1 px-2 py-1.5 bg-amber-100 text-amber-800 rounded-lg text-xs font-medium hover:bg-amber-200"
-              >
-                <Banknote size={14} />
-                Record cash
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => openAddCashModal(booking)}
+                  className="inline-flex items-center gap-1 px-2 py-1.5 bg-amber-100 text-amber-800 rounded-lg text-xs font-medium hover:bg-amber-200"
+                >
+                  <Banknote size={14} />
+                  Record cash
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openEditPaymentModal(booking)}
+                  className="inline-flex items-center gap-1 px-2 py-1.5 bg-gray-100 text-gray-800 rounded-lg text-xs font-medium hover:bg-gray-200"
+                >
+                  <Edit3 size={14} />
+                  Edit payment
+                </button>
+              </>
             )}
             <button
               type="button"
@@ -390,40 +448,67 @@ export default function StaffDashboard() {
         )}
       </div>
 
-      {/* Record cash modal */}
-      {cashModal && (
+      {/* Payment modal: Record cash or Edit payment */}
+      {paymentModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Record cash payment</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              {paymentModal.mode === 'add_cash' ? 'Record cash payment' : 'Edit payment breakdown'}
+            </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Booking {cashModal.token} — Total: ₹{cashModal.payment?.totalAmount ?? cashModal.services.reduce((s, bs) => s + bs.price, 0)}
+              Booking {paymentModal.booking.token} — Total: ₹{paymentModal.booking.payment?.totalAmount ?? paymentModal.booking.services.reduce((s, bs) => s + bs.price, 0)}
             </p>
-            <p className="text-sm text-gray-700 mb-2">Amount already paid: ₹{cashModal.payment?.amountPaid ?? 0}</p>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Cash amount to add (₹)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={cashInput}
-              onChange={(e) => setCashInput(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4"
-              placeholder="0"
-            />
-            <div className="flex gap-3">
+            {paymentModal.mode === 'add_cash' ? (
+              <>
+                <p className="text-sm text-gray-700 mb-2">Amount already paid: ₹{paymentModal.booking.payment?.amountPaid ?? 0}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cash amount to add (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={cashInput}
+                  onChange={(e) => setCashInput(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4"
+                  placeholder="0"
+                />
+              </>
+            ) : (
+              <>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Online amount (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editOnline}
+                  onChange={(e) => setEditOnline(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-3"
+                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cash amount (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editCash}
+                  onChange={(e) => setEditCash(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                />
+              </>
+            )}
+            <div className="flex gap-3 mt-6">
               <button
                 type="button"
-                onClick={() => { setCashModal(null); setCashInput('') }}
+                onClick={closePaymentModal}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={handleRecordCash}
+                onClick={paymentModal.mode === 'add_cash' ? handleRecordCash : handleSaveEditPayment}
                 disabled={paymentSaving}
                 className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
               >
-                {paymentSaving ? 'Saving...' : 'Record cash'}
+                {paymentSaving ? 'Saving...' : paymentModal.mode === 'add_cash' ? 'Record cash' : 'Save'}
               </button>
             </div>
           </div>

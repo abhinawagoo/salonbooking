@@ -2,10 +2,18 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, Plus, Edit2 } from 'lucide-react'
+import { ArrowLeft, MapPin, Plus, Edit2, Clock, CalendarX } from 'lucide-react'
 import { setUserRole } from '@/lib/auth'
 
 const MAX_LOCATIONS = 2
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+interface BusinessHoursDay {
+  dayOfWeek: number
+  isOpen: boolean
+  openTime: string
+  closeTime: string
+}
 
 interface Location {
   id: string
@@ -15,6 +23,8 @@ interface Location {
   mobile: string | null
   imageUrl: string | null
   isActive: boolean
+  businessHoursJson?: string | null
+  closedDatesJson?: string | null
 }
 
 export default function AdminLocationsPage() {
@@ -22,7 +32,13 @@ export default function AdminLocationsPage() {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<'add' | 'edit' | null>(null)
   const [editing, setEditing] = useState<Location | null>(null)
-  const [form, setForm] = useState({ name: '', address: '', mobile: '', imageUrl: '' })
+  const defaultBusinessHours: BusinessHoursDay[] = DAY_NAMES.map((_, i) => ({
+    dayOfWeek: i,
+    isOpen: i !== 0,
+    openTime: '09:00',
+    closeTime: '18:00',
+  }))
+  const [form, setForm] = useState({ name: '', address: '', mobile: '', imageUrl: '', businessHours: defaultBusinessHours, closedDates: [] as string[] })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -44,17 +60,47 @@ export default function AdminLocationsPage() {
 
   const openAdd = () => {
     setEditing(null)
-    setForm({ name: '', address: '', mobile: '', imageUrl: '' })
+    setForm({ name: '', address: '', mobile: '', imageUrl: '', businessHours: defaultBusinessHours, closedDates: [] })
     setModal('add')
   }
 
   const openEdit = (loc: Location) => {
     setEditing(loc)
+    let businessHours = defaultBusinessHours
+    if (loc.businessHoursJson) {
+      try {
+        const arr = JSON.parse(loc.businessHoursJson)
+        if (Array.isArray(arr)) {
+          businessHours = DAY_NAMES.map((_, i) => {
+            const found = arr.find((x: { dayOfWeek?: number }) => x?.dayOfWeek === i)
+            return {
+              dayOfWeek: i,
+              isOpen: found?.isOpen ?? (i !== 0),
+              openTime: found?.openTime ?? '09:00',
+              closeTime: found?.closeTime ?? '18:00',
+            }
+          })
+        }
+      } catch {
+        /* use default */
+      }
+    }
+    let closedDates: string[] = []
+    if (loc.closedDatesJson) {
+      try {
+        const arr = JSON.parse(loc.closedDatesJson)
+        closedDates = Array.isArray(arr) ? arr.filter((d): d is string => typeof d === 'string') : []
+      } catch {
+        /* use empty */
+      }
+    }
     setForm({
       name: loc.name,
       address: loc.address || '',
       mobile: loc.mobile || '',
       imageUrl: loc.imageUrl || '',
+      businessHours,
+      closedDates,
     })
     setModal('edit')
   }
@@ -68,16 +114,19 @@ export default function AdminLocationsPage() {
     }
     setSaving(true)
     try {
+      const payload = {
+        name,
+        address: form.address.trim() || undefined,
+        mobile: form.mobile.trim() || undefined,
+        imageUrl: form.imageUrl.trim() || undefined,
+        businessHoursJson: JSON.stringify(form.businessHours),
+        closedDatesJson: JSON.stringify(form.closedDates),
+      }
       if (modal === 'add') {
         const res = await fetch('/api/admin/locations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name,
-            address: form.address.trim() || undefined,
-            mobile: form.mobile.trim() || undefined,
-            imageUrl: form.imageUrl.trim() || undefined,
-          }),
+          body: JSON.stringify(payload),
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Failed to add location')
@@ -86,7 +135,7 @@ export default function AdminLocationsPage() {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name,
+            ...payload,
             address: form.address.trim() || null,
             mobile: form.mobile.trim() || null,
             imageUrl: form.imageUrl.trim() || null,
@@ -235,6 +284,109 @@ export default function AdminLocationsPage() {
                   placeholder="https://example.com/location-image.jpg"
                 />
                 <p className="text-xs text-gray-500 mt-1">This image appears on the bill for this location.</p>
+              </div>
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <Clock size={16} />
+                  Business Hours
+                </h3>
+                <p className="text-xs text-gray-500 mb-3">Set which days this salon is open. Closed days cannot be booked.</p>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {form.businessHours.map((day) => (
+                    <div key={day.dayOfWeek} className="flex flex-wrap items-center gap-2 p-2 rounded bg-gray-50">
+                      <label className="flex items-center gap-2 min-w-[100px]">
+                        <input
+                          type="checkbox"
+                          checked={day.isOpen}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              businessHours: f.businessHours.map((d) =>
+                                d.dayOfWeek === day.dayOfWeek ? { ...d, isOpen: e.target.checked } : d
+                              ),
+                            }))
+                          }
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-sm font-medium text-gray-700">{DAY_NAMES[day.dayOfWeek]}</span>
+                      </label>
+                      {day.isOpen && (
+                        <>
+                          <input
+                            type="time"
+                            value={day.openTime}
+                            onChange={(e) =>
+                              setForm((f) => ({
+                                ...f,
+                                businessHours: f.businessHours.map((d) =>
+                                  d.dayOfWeek === day.dayOfWeek ? { ...d, openTime: e.target.value } : d
+                                ),
+                              }))
+                            }
+                            className="px-2 py-1 border border-gray-200 rounded text-sm"
+                          />
+                          <span className="text-gray-400">–</span>
+                          <input
+                            type="time"
+                            value={day.closeTime}
+                            onChange={(e) =>
+                              setForm((f) => ({
+                                ...f,
+                                businessHours: f.businessHours.map((d) =>
+                                  d.dayOfWeek === day.dayOfWeek ? { ...d, closeTime: e.target.value } : d
+                                ),
+                              }))
+                            }
+                            className="px-2 py-1 border border-gray-200 rounded text-sm"
+                          />
+                        </>
+                      )}
+                      {!day.isOpen && <span className="text-xs text-gray-500 italic">Closed</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <CalendarX size={16} />
+                  Closed Dates (specific dates)
+                </h3>
+                <p className="text-xs text-gray-500 mb-3">Add festivals, holidays, or any specific dates when this salon will be closed. Format: YYYY-MM-DD</p>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {form.closedDates.map((d) => (
+                    <span
+                      key={d}
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 rounded text-sm"
+                    >
+                      {d}
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, closedDates: f.closedDates.filter((x) => x !== d) }))}
+                        className="hover:text-red-600"
+                        aria-label="Remove"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    id="closedDateInput"
+                    className="px-2 py-1.5 border border-gray-200 rounded text-sm"
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v && !form.closedDates.includes(v)) {
+                        setForm((f) => ({ ...f, closedDates: [...f.closedDates, v].sort() }))
+                      }
+                      e.target.value = ''
+                    }}
+                  />
+                  <label htmlFor="closedDateInput" className="text-xs text-gray-500 self-center">
+                    Pick a date to add
+                  </label>
+                </div>
               </div>
               <div className="flex gap-3 justify-end pt-4">
                 <button

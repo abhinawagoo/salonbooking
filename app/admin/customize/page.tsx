@@ -217,8 +217,8 @@ export default function AdminCustomizePage() {
                   placeholder="e.g. Services or Menu"
                 />
               </div>
-            </div>
           </div>
+        </div>
 
           {/* Hero Banner (single image, carousel slide on homepage) */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">

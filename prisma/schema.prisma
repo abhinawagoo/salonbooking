@@ -86,15 +86,17 @@ model Service {
 }
 
 model Location {
-  id        String    @id @default(cuid())
-  name      String
-  slug      String    @unique
-  address   String?
-  mobile    String?   // Contact number for this location (shown on bill)
-  imageUrl  String?   // Image for this location (shown on bill)
-  isActive  Boolean   @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  name               String
+  slug               String    @unique
+  address            String?
+  mobile             String?   // Contact number for this location (shown on bill)
+  imageUrl           String?   // Image for this location (shown on bill)
+  isActive           Boolean   @default(true)
+  businessHoursJson  String?   // JSON: [{ dayOfWeek: 0-6, isOpen: bool, openTime?: "09:00", closeTime?: "18:00" }]
+  closedDatesJson    String?   // JSON: ["2025-01-01", "2025-12-25"] - specific dates closed (festivals, holidays, etc.)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
   
   bookings Booking[]
 }

@@ -30,7 +30,6 @@ interface ConfirmationScreenProps {
   locationAddress?: string
   locationMobile?: string
   locationImageUrl?: string
-  redirectCountdown?: number
 }
 
 export default function ConfirmationScreen({
@@ -50,7 +49,6 @@ export default function ConfirmationScreen({
   locationAddress,
   locationMobile,
   locationImageUrl,
-  redirectCountdown
 }: ConfirmationScreenProps) {
   const router = useRouter()
   const [invoiceSettings, setInvoiceSettings] = useState<{ brandName?: string; website?: string; terms?: string }>({})
@@ -138,11 +136,6 @@ export default function ConfirmationScreen({
         </div>
         <h1 className="text-3xl font-bold mb-2">Booking Confirmed!</h1>
         <p className="text-gray-600">Your appointment has been successfully booked</p>
-        {redirectCountdown !== undefined && redirectCountdown > 0 && (
-          <p className="text-sm text-gray-500 mt-2">
-            Redirecting to homepage in {redirectCountdown} seconds...
-          </p>
-        )}
         <div className="mt-6 flex flex-wrap items-center gap-3 justify-center">
           <button
             onClick={handleDownloadInvoice}
