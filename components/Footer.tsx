@@ -32,14 +32,23 @@ export default function Footer() {
   }
 
   return (
-    <footer className="bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 text-white/90 mt-auto border-t border-white/10">
-      <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
+    <footer className="bg-[#f5f0e8] text-gray-700 mt-auto relative">
+      {/* Wavy top edge */}
+      <div className="absolute left-0 right-0 top-0 -translate-y-full w-full overflow-hidden">
+        <svg viewBox="0 0 1440 80" preserveAspectRatio="none" className="w-full h-12 sm:h-16">
+          <path
+            d="M0,40 C360,80 720,0 1080,40 C1260,60 1380,50 1440,40 L1440,80 L0,80 Z"
+            fill="#f5f0e8"
+          />
+        </svg>
+      </div>
+      <div className="relative max-w-4xl mx-auto px-4 pt-8 pb-6 sm:pt-10 sm:pb-8">
         {/* Accordion: About */}
-        <div className="border-b border-white/20">
+        <div className="border-b border-amber-200/60">
           <button
             type="button"
             onClick={() => setAboutOpen((o) => !o)}
-            className="w-full flex items-center justify-between py-4 text-left font-medium text-white"
+            className="w-full flex items-center justify-between py-4 text-left font-medium text-gray-800"
           >
             <span>About {BRAND_NAME}</span>
             <ChevronDown
@@ -48,7 +57,7 @@ export default function Footer() {
             />
           </button>
           {aboutOpen && (
-            <div className="pb-4 text-sm text-white/80 space-y-2">
+            <div className="pb-4 text-sm text-gray-600 space-y-2">
               <p>
                 {BRAND_NAME} offers premium salon services. Book your appointment online for a seamless experience.
               </p>
@@ -56,7 +65,7 @@ export default function Footer() {
                 href={WEBSITE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-pink-400 hover:text-pink-300 hover:underline"
+                className="inline-flex items-center gap-1 text-teal-600 hover:text-teal-700 hover:underline"
               >
                 {WEBSITE_URL.replace(/^https?:\/\//, '')}
                 <ExternalLink size={14} />
@@ -66,11 +75,11 @@ export default function Footer() {
         </div>
 
         {/* Accordion: Quick Links */}
-        <div className="border-b border-white/20">
+        <div className="border-b border-amber-200/60">
           <button
             type="button"
             onClick={() => setQuickLinksOpen((o) => !o)}
-            className="w-full flex items-center justify-between py-4 text-left font-medium text-white"
+            className="w-full flex items-center justify-between py-4 text-left font-medium text-gray-800"
           >
             <span>Quick Links</span>
             <ChevronDown
@@ -80,22 +89,22 @@ export default function Footer() {
           </button>
           {quickLinksOpen && (
             <nav className="pb-4 flex flex-col gap-2 text-sm">
-              <Link href="/" className="text-white/80 hover:text-white">
+              <Link href="/" className="text-gray-600 hover:text-gray-900">
                 Home
               </Link>
-              <Link href="/services" className="text-white/80 hover:text-white">
+              <Link href="/services" className="text-gray-600 hover:text-gray-900">
                 Services
               </Link>
-              <Link href="/booking/location" className="text-white/80 hover:text-white">
+              <Link href="/booking/location" className="text-gray-600 hover:text-gray-900">
                 Book Appointment
               </Link>
-              <Link href="/terms" className="text-white/80 hover:text-white">
+              <Link href="/terms" className="text-gray-600 hover:text-gray-900">
                 Terms &amp; Conditions
               </Link>
-              <Link href="/privacy" className="text-white/80 hover:text-white">
+              <Link href="/privacy" className="text-gray-600 hover:text-gray-900">
                 Privacy Policy
               </Link>
-              <Link href="/refund" className="text-white/80 hover:text-white">
+              <Link href="/refund" className="text-gray-600 hover:text-gray-900">
                 Refund &amp; Cancellation
               </Link>
             </nav>
@@ -103,21 +112,21 @@ export default function Footer() {
         </div>
 
         {/* Support box */}
-        <div className="mt-4 p-4 rounded-xl bg-white/10 border border-white/20 text-center">
-          <p className="text-sm font-medium text-white mb-1">
+        <div className="mt-4 p-4 rounded-xl bg-white/70 border border-amber-200/60 text-center shadow-sm">
+          <p className="text-sm font-medium text-gray-800 mb-1">
             Facing issues? Reach us at:
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <a
               href="tel:+918877799982"
-              className="inline-flex items-center gap-1.5 text-pink-400 font-medium hover:text-pink-300 hover:underline"
+              className="inline-flex items-center gap-1.5 text-teal-600 font-medium hover:text-teal-700 hover:underline"
             >
               <Phone size={16} />
               +91 8877799982
             </a>
             <a
               href={`mailto:${SUPPORT_EMAIL}`}
-              className="inline-flex items-center gap-1.5 text-pink-400 font-medium hover:text-pink-300 hover:underline"
+              className="inline-flex items-center gap-1.5 text-teal-600 font-medium hover:text-teal-700 hover:underline"
             >
               <Mail size={16} />
               {SUPPORT_EMAIL}
@@ -134,7 +143,7 @@ export default function Footer() {
               href={social.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-10 h-10 rounded-full border-2 border-white/30 flex items-center justify-center text-white/90 hover:border-white/60 hover:text-white transition-colors"
+              className="w-10 h-10 rounded-full border-2 border-amber-300/70 flex items-center justify-center text-gray-600 hover:border-gray-400 hover:text-gray-900 transition-colors"
               aria-label={social.name}
             >
               <span className="text-sm font-semibold">{social.icon}</span>
@@ -144,20 +153,20 @@ export default function Footer() {
         )}
 
         {/* Copyright */}
-        <div className="mt-8 pt-6 border-t border-white/20 text-center text-xs text-white/60 leading-relaxed">
+        <div className="mt-8 pt-6 border-t border-amber-200/60 text-center text-xs text-gray-500 leading-relaxed">
           <p>
             Copyright 2017–2025 © {BRAND_NAME} | {WEBSITE_URL.replace(/^https?:\/\//, '')}
           </p>
           <p className="mt-1">
-            <Link href="/terms" className="hover:text-white/90 underline">
+            <Link href="/terms" className="hover:text-gray-700 underline">
               Terms &amp; Conditions
             </Link>
             {' · '}
-            <Link href="/privacy" className="hover:text-white/90 underline">
+            <Link href="/privacy" className="hover:text-gray-700 underline">
               Privacy Policy
             </Link>
             {' · '}
-            <Link href="/refund" className="hover:text-white/90 underline">
+            <Link href="/refund" className="hover:text-gray-700 underline">
               Refund &amp; Cancellation
             </Link>
             {' · '}

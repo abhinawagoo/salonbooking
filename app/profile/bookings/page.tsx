@@ -115,7 +115,7 @@ export default function ProfileBookingsPage() {
       setBookings((prev) =>
         prev.map((b) =>
           b.id === rescheduleBooking.id
-            ? { ...b, date: date.toISOString(), timeSlot, locationId: rescheduleLocationId, locationName: newLoc?.name, locationAddress: newLoc?.address ?? null }
+            ? { ...b, date: date.toISOString(), timeSlot, locationId: rescheduleLocationId, locationName: newLoc?.name, locationAddress: newLoc?.address ?? undefined }
             : b
         )
       )
