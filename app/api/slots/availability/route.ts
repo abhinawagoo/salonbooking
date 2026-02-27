@@ -11,6 +11,7 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const locationId = searchParams.get('locationId')
+    const excludeBookingId = searchParams.get('excludeBookingId')
 
     if (!startDate || !endDate) {
       return NextResponse.json(
@@ -26,6 +27,7 @@ export async function GET(request: Request) {
       date: { gte: start, lte: end },
       status: { not: 'CANCELLED' },
       ...(locationId ? { locationId } : {}),
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
     }
 
     const [bookings, location] = await Promise.all([

@@ -17,6 +17,7 @@ function InvoicePageContent() {
   const searchParams = useSearchParams()
   const [bookingData, setBookingData] = useState<{
     token: string
+    billNo?: string
     date: string
     timeSlot: string
     locationName?: string
@@ -161,7 +162,7 @@ function InvoicePageContent() {
             address: bookingData.locationAddress ?? undefined,
             website: invoiceSettings.website ?? undefined,
             logoUrl: bookingData.locationImageUrl ?? undefined,
-            invoiceNo: bookingData.token,
+            invoiceNo: bookingData.billNo ?? bookingData.token,
             invoiceDate: format(dateObj, 'dd/MM/yyyy'),
             appointmentTime: bookingData.timeSlot ? formatTime12h(bookingData.timeSlot) : undefined,
             customerName: bookingData.customerName ?? undefined,

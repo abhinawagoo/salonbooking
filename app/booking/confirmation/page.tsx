@@ -129,6 +129,7 @@ function ConfirmationPageContent() {
         locationAddress={bookingData.locationAddress}
         locationMobile={bookingData.locationMobile}
         locationImageUrl={bookingData.locationImageUrl}
+        billNo={bookingData.billNo}
       />
     </div>
   )

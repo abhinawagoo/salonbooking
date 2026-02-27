@@ -113,11 +113,18 @@ model Booking {
   status          String   @default("BOOKED") // BOOKED, COMPLETED, CANCELLED
   notes           String?
   token           String   @unique // Booking confirmation token
+  billNo          String?  // Serial bill number (e.g. BILL-000001), assigned on first invoice generation
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
   services BookingService[]
   payment  Payment?
+}
+
+// Single row (id=1) for atomic bill number sequence
+model BillSequence {
+  id       Int @id @default(1)
+  lastNo   Int @default(0)
 }
 
 model BookingService {

@@ -20,8 +20,8 @@ export async function POST(request: Request) {
     }
 
     const folder = type as R2Folder
-    if (!['service', 'hero', 'gallery', 'subcategory', 'home_videos'].includes(folder)) {
-      return NextResponse.json({ error: 'Invalid type. Use service, hero, gallery, subcategory, or home_videos.' }, { status: 400 })
+    if (!['service', 'hero', 'gallery', 'subcategory', 'home_videos', 'location'].includes(folder)) {
+      return NextResponse.json({ error: 'Invalid type. Use service, hero, gallery, subcategory, home_videos, or location.' }, { status: 400 })
     }
 
     const fileType = file.type

@@ -9,6 +9,7 @@ interface Location {
   name: string
   slug: string
   address: string | null
+  imageUrl?: string | null
 }
 
 export default function LocationPage() {
@@ -77,8 +78,12 @@ export default function LocationPage() {
               onClick={() => handleSelect(loc)}
               className="w-full bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5 text-left hover:border-gray-300 hover:shadow-md transition-all flex items-center gap-3 sm:gap-4"
             >
-              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-                <MapPin size={24} className="text-gray-600" />
+              <div className="flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                {loc.imageUrl ? (
+                  <img src={loc.imageUrl} alt={loc.name} className="w-full h-full object-cover" />
+                ) : (
+                  <MapPin size={24} className="text-gray-600" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-gray-900">{loc.name}</p>

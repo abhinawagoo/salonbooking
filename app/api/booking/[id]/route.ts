@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getOrAssignBillNo } from '@/lib/billNo'
 
 export async function GET(
   request: Request,
@@ -27,12 +28,14 @@ export async function GET(
       )
     }
 
+    const billNo = await getOrAssignBillNo(booking.id)
     const totalAmount = booking.payment?.totalAmount ?? booking.services.reduce((sum, bs) => sum + bs.price, 0)
     const amountPaid = booking.payment?.amountPaid ?? 0
     const dueAmount = Math.max(0, totalAmount - amountPaid)
 
     return NextResponse.json({
       token: booking.token,
+      billNo,
       date: booking.date,
       timeSlot: booking.timeSlot,
       locationName: booking.location?.name ?? null,

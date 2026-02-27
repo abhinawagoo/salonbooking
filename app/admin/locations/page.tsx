@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, Plus, Edit2, Clock, CalendarX } from 'lucide-react'
+import { ArrowLeft, MapPin, Plus, Edit2, Clock, CalendarX, Upload, X } from 'lucide-react'
 import { setUserRole } from '@/lib/auth'
 
 const MAX_LOCATIONS = 2
@@ -40,6 +40,7 @@ export default function AdminLocationsPage() {
   }))
   const [form, setForm] = useState({ name: '', address: '', mobile: '', imageUrl: '', businessHours: defaultBusinessHours, closedDates: [] as string[] })
   const [saving, setSaving] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   useEffect(() => {
     setUserRole('ADMIN')
@@ -103,6 +104,50 @@ export default function AdminLocationsPage() {
       closedDates,
     })
     setModal('edit')
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image (JPEG, PNG, WebP, or GIF).')
+      return
+    }
+    setUploadingImage(true)
+    try {
+      const formData = new FormData()
+      formData.set('file', file)
+      formData.set('type', 'location')
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Upload failed')
+      setForm((f) => ({ ...f, imageUrl: data.url || '' }))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploadingImage(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleRemoveImage = async () => {
+    const url = form.imageUrl
+    if (!url) return
+    try {
+      const res = await fetch('/api/admin/upload/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data?.error || 'Failed to delete from storage. Please try again.')
+        return
+      }
+      setForm((f) => ({ ...f, imageUrl: '' }))
+    } catch {
+      alert('Failed to delete from storage. Please try again.')
+    }
   }
 
   const handleSave = async (e: React.FormEvent) => {
@@ -275,15 +320,59 @@ export default function AdminLocationsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Image URL (optional)</label>
-                <input
-                  type="url"
-                  value={form.imageUrl}
-                  onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="https://example.com/location-image.jpg"
-                />
-                <p className="text-xs text-gray-500 mt-1">This image appears on the bill for this location.</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Image (optional)</label>
+                <p className="text-xs text-gray-500 mb-2">This image appears on the bill for this location. JPEG, PNG or WebP. Max 10 MB.</p>
+                <div className="flex flex-wrap items-start gap-4">
+                  {form.imageUrl ? (
+                    <div className="relative group">
+                      <img
+                        src={form.imageUrl}
+                        alt="Location preview"
+                        className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-lg border border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="absolute top-1 right-1 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow"
+                        title="Remove image"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : null}
+                  {!form.imageUrl && (
+                    <label className="w-24 h-24 sm:w-32 sm:h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-primary-500 hover:bg-primary-50/50 transition-colors shrink-0">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                        disabled={uploadingImage}
+                      />
+                      {uploadingImage ? (
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary-600 border-t-transparent" />
+                      ) : (
+                        <Upload size={24} className="text-gray-400" />
+                      )}
+                    </label>
+                  )}
+                  {form.imageUrl && (
+                    <label className="w-24 h-24 sm:w-32 sm:h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-primary-500 hover:bg-primary-50/50 transition-colors shrink-0">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                        disabled={uploadingImage}
+                      />
+                      {uploadingImage ? (
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary-600 border-t-transparent" />
+                      ) : (
+                        <span className="text-xs text-gray-500 text-center px-2">Replace</span>
+                      )}
+                    </label>
+                  )}
+                </div>
               </div>
               <div className="border-t border-gray-200 pt-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">

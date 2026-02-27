@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { generateInvoicePDF } from '@/lib/generateInvoice'
 import type { InvoiceData } from '@/lib/generateInvoice'
+import { getOrAssignBillNo } from '@/lib/billNo'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
       if (!booking) {
         return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
       }
+      const billNo = await getOrAssignBillNo(booking.id)
       const totalAmount = booking.payment?.totalAmount ?? booking.services.reduce((s, bs) => s + bs.price, 0)
       const amountPaid = booking.payment?.amountPaid ?? 0
       const dueAmount = Math.max(0, totalAmount - amountPaid)
@@ -61,7 +63,7 @@ export async function POST(request: Request) {
         brandName: site?.brandName ?? undefined,
         website: site?.invoiceWebsite ?? undefined,
         terms: site?.invoiceTerms ?? undefined,
-        invoiceNumber: booking.token,
+        invoiceNumber: billNo,
       }
       if (payload.locationImageUrl) {
         const dataUrl = await fetchImageAsDataUrl(payload.locationImageUrl)
@@ -82,6 +84,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid invoice data' }, { status: 400 })
     }
 
+    // Fetch booking to get or assign bill number (one bill no per token)
+    const { prisma } = await import('@/lib/prisma')
+    const booking = await prisma.booking.findFirst({
+      where: { token: data.bookingToken },
+      select: { id: true, billNo: true },
+    })
+    const billNo = booking ? await getOrAssignBillNo(booking.id) : (data.invoiceNumber || data.bookingToken)
+
     // Ensure date is Date object
     if (typeof data.date === 'string') data.date = new Date(data.date)
 
@@ -91,7 +101,8 @@ export async function POST(request: Request) {
       if (dataUrl) data.locationImageDataUrl = dataUrl
     }
 
-    const { buffer, filename } = generateInvoicePDF(data)
+    const payload: InvoiceData = { ...data, invoiceNumber: billNo }
+    const { buffer, filename } = generateInvoicePDF(payload)
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': 'application/pdf',

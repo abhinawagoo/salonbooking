@@ -16,6 +16,7 @@ interface Service {
 
 interface ConfirmationScreenProps {
   bookingToken: string
+  billNo?: string
   date: Date
   timeSlot: string
   services: Service[]
@@ -35,6 +36,7 @@ interface ConfirmationScreenProps {
 
 export default function ConfirmationScreen({
   bookingToken,
+  billNo,
   date,
   timeSlot,
   services,
@@ -95,7 +97,7 @@ export default function ConfirmationScreen({
         brandName: settings.brandName,
         website: settings.invoiceWebsite,
         terms: settings.invoiceTerms ?? '',
-        invoiceNumber: bookingToken,
+        invoiceNumber: billNo ?? bookingToken,
       }
       const res = await fetch('/api/invoice/pdf', {
         method: 'POST',
@@ -181,7 +183,7 @@ export default function ConfirmationScreen({
           address: locationAddress ?? undefined,
           website: invoiceSettings.website ?? undefined,
           logoUrl: locationImageUrl ?? undefined,
-          invoiceNo: bookingToken,
+          invoiceNo: billNo ?? bookingToken,
           invoiceDate: format(date instanceof Date ? date : new Date(date as string), 'dd/MM/yyyy'),
           appointmentTime: formatTime12h(timeSlot),
           customerName: customerName ?? undefined,
