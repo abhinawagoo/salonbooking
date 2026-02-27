@@ -80,28 +80,65 @@ export function getSlotsInRange(startSlot: string, durationMinutes: number): str
   return slots
 }
 
+/** Users can book up to 30 min before closing, regardless of service duration. */
+const CLOSING_BUFFER_MIN = 30
+
 /**
- * Check if a booking ending at (startSlot + durationMinutes) is within closing + buffer.
- * Uses TIME_SLOTS. When closeTime provided, service must finish by closeTime.
+ * Check if a slot is bookable: user can book up to 30 min before closing.
+ * Last valid start = closeTime - 30 min (does not depend on service duration).
  */
 export function isWithinClosingTime(
   startSlot: string,
-  durationMinutes: number,
+  _durationMinutes: number,
   closeTime?: string
 ): boolean {
-  const slots = getSlotsInRange(startSlot, durationMinutes)
+  const slots = getSlotsInRange(startSlot, SLOT_INTERVAL_MINUTES)
   if (slots.length === 0) return false
   const lastSlot = slots[slots.length - 1]
   const lastIdx = TIME_SLOTS.indexOf(lastSlot)
-  const maxEnd = closeTime ? TIME_SLOTS.indexOf(closeTime) : TIME_SLOTS.indexOf('19:00')
-  const maxEndIdx = maxEnd >= 0 ? maxEnd : TIME_SLOTS.length - 1
-  return lastIdx <= maxEndIdx
+  if (lastIdx < 0) return false
+  if (!closeTime) return lastIdx <= TIME_SLOTS.indexOf('19:00')
+  const [ch, cm] = closeTime.split(':').map(Number)
+  const closeMins = (ch || 0) * 60 + (cm || 0)
+  const lastValidStartMins = closeMins - CLOSING_BUFFER_MIN
+  const lastValidSlotMins = Math.floor(lastValidStartMins / 30) * 30
+  const lastValidSlot = `${String(Math.floor(lastValidSlotMins / 60)).padStart(2, '0')}:${String(lastValidSlotMins % 60).padStart(2, '0')}`
+  const maxIdx = TIME_SLOTS.indexOf(lastValidSlot)
+  if (maxIdx >= 0) return lastIdx <= maxIdx
+  const exactIdx = TIME_SLOTS.indexOf(closeTime)
+  return exactIdx >= 0 && lastIdx <= exactIdx
 }
 
-/** Get slots between openTime and closeTime (exclusive of close). */
+/**
+ * Round a time string (e.g. "10:15", "19:30") to the nearest 30-min slot.
+ * roundUp: true = first slot at or after time (for open/close bounds).
+ */
+function timeToSlot(time: string, roundUp: boolean): string {
+  const exact = TIME_SLOTS.indexOf(time)
+  if (exact >= 0) return time
+  const [h, m] = (time || '09:00').split(':').map(Number)
+  const totalMins = (h || 0) * 60 + (m || 0)
+  const slotMins = roundUp ? Math.ceil(totalMins / 30) * 30 : Math.floor(totalMins / 30) * 30
+  const sh = Math.floor(slotMins / 60)
+  const sm = slotMins % 60
+  const slot = `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`
+  return TIME_SLOTS.indexOf(slot) >= 0 ? slot : TIME_SLOTS[0]
+}
+
+/**
+ * Get slots between openTime and closeTime.
+ * Last bookable slot = closeTime - 30 min (users can book up to 30 min before closing).
+ */
 export function getSlotsBetween(openTime: string, closeTime: string): string[] {
-  const startIdx = TIME_SLOTS.indexOf(openTime)
-  const endIdx = TIME_SLOTS.indexOf(closeTime)
-  if (startIdx < 0 || endIdx < 0 || startIdx >= endIdx) return []
-  return TIME_SLOTS.slice(startIdx, endIdx)
+  const startSlot = timeToSlot(openTime, true)
+  const startIdx = TIME_SLOTS.indexOf(startSlot)
+  if (startIdx < 0) return []
+  const [ch, cm] = (closeTime || '18:00').split(':').map(Number)
+  const closeMins = (ch || 0) * 60 + (cm || 0)
+  const lastBookableMins = closeMins - CLOSING_BUFFER_MIN
+  const lastSlotMins = Math.floor(lastBookableMins / 30) * 30
+  const lastSlot = `${String(Math.floor(lastSlotMins / 60)).padStart(2, '0')}:${String(lastSlotMins % 60).padStart(2, '0')}`
+  const endIdx = TIME_SLOTS.indexOf(lastSlot)
+  if (endIdx < 0 || startIdx > endIdx) return []
+  return TIME_SLOTS.slice(startIdx, endIdx + 1)
 }

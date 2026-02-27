@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { format, addDays, isSameDay, startOfDay, isBefore, isAfter, setHours, setMinutes } from 'date-fns'
 import { formatTime12h } from '@/lib/formatTime'
 import { TIME_SLOTS, getSlotsInRange, isWithinClosingTime, MAX_BOOKINGS_PER_SLOT, parseBusinessHours, getDayConfig, getSlotsBetween } from '@/lib/slots'
@@ -129,6 +129,15 @@ export default function DateTimePicker({ onSelect, slotCounts = {}, durationMinu
     setSelectedTime(null)
   }
 
+  const timeSectionRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (selectedDate && !isDateClosed(selectedDate) && timeSectionRef.current) {
+      timeSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [selectedDate])
+
+  const timeSlots = selectedDate ? getTimeSlotsForDate(selectedDate) : []
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
@@ -165,8 +174,14 @@ export default function DateTimePicker({ onSelect, slotCounts = {}, durationMinu
       </div>
 
       {selectedDate && !isDateClosed(selectedDate) && (
-        <div>
+        <div ref={timeSectionRef} className="scroll-mt-4">
           <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Select Time</h3>
+          {timeSlots.length === 0 ? (
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-4">
+              No time slots available for this date. The salon may be closed or fully booked. Try another date.
+            </p>
+          ) : (
+          <>
           <div className="mb-3 sm:mb-4 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-green-100 border-2 border-green-500 rounded"></div>
@@ -186,7 +201,7 @@ export default function DateTimePicker({ onSelect, slotCounts = {}, durationMinu
             </div>
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
-            {(selectedDate ? getTimeSlotsForDate(selectedDate) : []).map((timeSlot) => {
+            {timeSlots.map((timeSlot) => {
               const status = getSlotStatus(selectedDate, timeSlot)
               const count = getSlotBookingCount(selectedDate, timeSlot)
               const isSelected = selectedTime === timeSlot
@@ -236,6 +251,8 @@ export default function DateTimePicker({ onSelect, slotCounts = {}, durationMinu
               )
             })}
           </div>
+          </>
+          )}
         </div>
       )}
 
