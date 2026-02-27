@@ -61,6 +61,7 @@ export default function HomeVideoCarousel({ videos }: HomeVideoCarouselProps) {
             className="w-full h-full object-cover"
             muted
             playsInline
+            autoPlay
             onEnded={handleEnded}
             preload="auto"
           />

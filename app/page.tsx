@@ -52,21 +52,24 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="h-[calc(100vh-80px)] flex items-center justify-center bg-gray-900">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-white border-t-transparent" />
+      <div className="h-[calc(100vh-80px)] flex items-center justify-center bg-gradient-to-br from-rose-950 via-rose-900/95 to-slate-900">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-rose-300 border-t-transparent" />
       </div>
     )
   }
 
   return (
-    <div className="h-[calc(100vh-80px)] flex flex-col overflow-hidden bg-black">
-      {/* Top: Banner - click to advance */}
-      <div className="flex-[0.45] min-h-0 shrink-0">
-        <HomeLandingBanner slides={bannerSlides} />
-      </div>
-      {/* Bottom: Videos carousel */}
-      <div className="flex-[0.55] min-h-0 shrink-0">
-        <HomeVideoCarousel videos={videos} />
+    <div className="flex flex-col min-h-[calc(100vh-80px)] bg-gradient-to-br from-rose-950 via-rose-900/95 to-slate-900 px-4 py-4 sm:px-6 sm:py-5 md:px-8 md:py-6">
+      {/* Banner + Video: fixed height so they display and play properly */}
+      <div className="h-[calc(100vh-80px)] flex flex-col gap-4 sm:gap-5 shrink-0">
+        <div className="flex-[0.45] min-h-0 rounded-2xl overflow-hidden border-2 border-rose-300/30 shadow-xl shadow-rose-950/50">
+          <HomeLandingBanner slides={bannerSlides} />
+        </div>
+        <div className="flex-[0.55] min-h-0 rounded-2xl overflow-hidden border-2 border-rose-300/40 shadow-xl shadow-rose-950/50 p-1.5 sm:p-2 md:p-2.5 bg-rose-950/50">
+          <div className="w-full h-full rounded-xl overflow-hidden">
+            <HomeVideoCarousel videos={videos} />
+          </div>
+        </div>
       </div>
     </div>
   )
