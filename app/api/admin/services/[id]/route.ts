@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { deleteFromR2ByUrl } from '@/lib/r2'
 
 export async function PUT(
   request: Request,
@@ -11,7 +12,7 @@ export async function PUT(
 
     const existing = await prisma.service.findUnique({
       where: { id: params.id },
-      select: { categoryId: true, subCategoryId: true },
+      select: { categoryId: true, subCategoryId: true, imageUrl: true },
     })
 
     let finalCategoryId = categoryId !== undefined ? (categoryId?.trim() || null) : existing?.categoryId ?? null
@@ -47,7 +48,13 @@ export async function PUT(
     if (description !== undefined) updateData.description = description
     if (price !== undefined) updateData.price = parseFloat(price)
     if (duration !== undefined) updateData.duration = parseInt(duration)
-    if (imageUrl !== undefined) updateData.imageUrl = imageUrl
+    if (imageUrl !== undefined) {
+      updateData.imageUrl = imageUrl
+      const newUrl = imageUrl?.trim() || null
+      if (existing?.imageUrl && existing.imageUrl !== newUrl) {
+        await deleteFromR2ByUrl(existing.imageUrl)
+      }
+    }
     if (isActive !== undefined) updateData.isActive = isActive
     // Always sync categoryId when subCategoryId is set (derived from subcategory's parent)
     if (subCategoryId !== undefined) {

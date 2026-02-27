@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { deleteFromR2ByUrl } from '@/lib/r2'
 
 function parseJsonArray(str: string | null): string[] {
   if (!str) return []
@@ -94,6 +95,21 @@ export async function PUT(request: Request) {
     const galleryArr = Array.isArray(galleryImageUrls)
       ? galleryImageUrls.filter((u): u is string => typeof u === 'string' && u.length > 0).slice(0, 5)
       : []
+
+    // Delete from R2 any gallery/hero URLs that were removed
+    const existing = await prisma.siteCustomization.findUnique({
+      where: { id: 1 },
+      select: { heroVideoUrls: true, galleryImageUrls: true },
+    })
+    if (existing) {
+      const oldHero = parseJsonArray(existing.heroVideoUrls)
+      const oldGallery = parseJsonArray(existing.galleryImageUrls)
+      const removedHero = oldHero.filter((u) => !heroArr.includes(u))
+      const removedGallery = oldGallery.filter((u) => !galleryArr.includes(u))
+      for (const url of [...removedHero, ...removedGallery]) {
+        if (url && typeof url === 'string') await deleteFromR2ByUrl(url)
+      }
+    }
     const brand = (brandName !== undefined ? String(brandName).trim() : null) || 'Salon'
     const menu = (menuLabel !== undefined ? String(menuLabel).trim() : null) || 'Services'
     const invWeb = invoiceWebsite !== undefined ? String(invoiceWebsite).trim() || null : undefined

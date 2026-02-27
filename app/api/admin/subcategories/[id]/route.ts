@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { deleteFromR2ByUrl } from '@/lib/r2'
 
 export async function PUT(
   request: Request,
@@ -16,6 +17,17 @@ export async function PUT(
     if (order !== undefined) updateData.order = parseInt(String(order), 10)
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl?.trim() || null
     if (isActive !== undefined) updateData.isActive = Boolean(isActive)
+
+    if (imageUrl !== undefined) {
+      const existing = await prisma.subCategory.findUnique({
+        where: { id },
+        select: { imageUrl: true },
+      })
+      const newUrl = imageUrl?.trim() || null
+      if (existing?.imageUrl && existing.imageUrl !== newUrl) {
+        await deleteFromR2ByUrl(existing.imageUrl)
+      }
+    }
 
     const subcategory = await prisma.subCategory.update({
       where: { id },
@@ -37,6 +49,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = params
+    const existing = await prisma.subCategory.findUnique({
+      where: { id },
+      select: { imageUrl: true },
+    })
+    if (existing?.imageUrl) await deleteFromR2ByUrl(existing.imageUrl)
     await prisma.subCategory.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (error) {

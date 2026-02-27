@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { deleteFromR2ByUrl } from '@/lib/r2'
 
 /** PATCH: Update location name and address (slug left unchanged) */
 export async function PATCH(
@@ -27,6 +28,17 @@ export async function PATCH(
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl
     if (businessHoursJson !== undefined) updateData.businessHoursJson = businessHoursJson
     if (closedDatesJson !== undefined) updateData.closedDatesJson = closedDatesJson
+
+    if (imageUrl !== undefined) {
+      const existing = await prisma.location.findUnique({
+        where: { id },
+        select: { imageUrl: true },
+      })
+      const newUrl = (imageUrl ?? '').toString().trim() || null
+      if (existing?.imageUrl && existing.imageUrl !== newUrl) {
+        await deleteFromR2ByUrl(existing.imageUrl)
+      }
+    }
 
     const location = await prisma.location.update({
       where: { id },

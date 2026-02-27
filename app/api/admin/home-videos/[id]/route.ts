@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { deleteFromR2ByUrl } from '@/lib/r2'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,12 +30,19 @@ export async function PUT(
   }
 }
 
-/** DELETE: Remove home video */
+/** DELETE: Remove home video (and from R2 bucket) */
 export async function DELETE(
   _request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
+    const video = await prisma.homeVideo.findUnique({
+      where: { id: params.id },
+      select: { videoUrl: true },
+    })
+    if (video?.videoUrl) {
+      await deleteFromR2ByUrl(video.videoUrl)
+    }
     await prisma.homeVideo.delete({
       where: { id: params.id },
     })
