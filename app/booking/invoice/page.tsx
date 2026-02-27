@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Download, FileText, Printer } from 'lucide-react'
 import { format } from 'date-fns'
+import { formatTime12h } from '@/lib/formatTime'
 import TaxInvoice from '@/components/TaxInvoice'
 
 interface Service {
@@ -162,6 +163,7 @@ function InvoicePageContent() {
             logoUrl: bookingData.locationImageUrl ?? undefined,
             invoiceNo: bookingData.token,
             invoiceDate: format(dateObj, 'dd/MM/yyyy'),
+            appointmentTime: bookingData.timeSlot ? formatTime12h(bookingData.timeSlot) : undefined,
             customerName: bookingData.customerName ?? undefined,
             customerMobile: bookingData.customerMobile ?? undefined,
             services: bookingData.services,

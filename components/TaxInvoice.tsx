@@ -21,6 +21,8 @@ export interface TaxInvoiceData {
   logoUrl?: string
   invoiceNo: string
   invoiceDate: string
+  /** Appointment time in 12h format (e.g. "2:00 PM") */
+  appointmentTime?: string
   customerName?: string
   customerMobile?: string
   services: TaxInvoiceService[]
@@ -84,9 +86,12 @@ export default function TaxInvoice({ data }: { data: TaxInvoiceData }) {
       </div>
 
       {/* Info Row */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:justify-between text-xs sm:text-sm mt-2 sm:mt-2 mb-2 sm:mb-2">
+      <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 text-xs sm:text-sm mt-2 sm:mt-2 mb-2 sm:mb-2">
         <span className="font-medium text-gray-700">Invoice No: {data.invoiceNo}</span>
         <span className="font-medium text-gray-700">Invoice Date: {data.invoiceDate}</span>
+        {data.appointmentTime && (
+          <span className="font-medium text-gray-700">Appointment: {data.appointmentTime}</span>
+        )}
       </div>
 
       {/* Bill To Box */}

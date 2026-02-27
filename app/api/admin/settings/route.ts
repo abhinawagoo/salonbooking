@@ -96,19 +96,29 @@ export async function PUT(request: Request) {
       ? galleryImageUrls.filter((u): u is string => typeof u === 'string' && u.length > 0).slice(0, 5)
       : []
 
-    // Delete from R2 any gallery/hero URLs that were removed
-    const existing = await prisma.siteCustomization.findUnique({
-      where: { id: 1 },
-      select: { heroVideoUrls: true, galleryImageUrls: true },
-    })
-    if (existing) {
-      const oldHero = parseJsonArray(existing.heroVideoUrls)
-      const oldGallery = parseJsonArray(existing.galleryImageUrls)
-      const removedHero = oldHero.filter((u) => !heroArr.includes(u))
-      const removedGallery = oldGallery.filter((u) => !galleryArr.includes(u))
-      for (const url of [...removedHero, ...removedGallery]) {
-        if (url && typeof url === 'string') await deleteFromR2ByUrl(url)
+    // Delete from R2 any gallery/hero URLs that were removed (best-effort; don't fail save)
+    try {
+      const existing = await prisma.siteCustomization.findUnique({
+        where: { id: 1 },
+        select: { heroVideoUrls: true, galleryImageUrls: true },
+      })
+      if (existing) {
+        const oldHero = parseJsonArray(existing.heroVideoUrls)
+        const oldGallery = parseJsonArray(existing.galleryImageUrls)
+        const removedHero = oldHero.filter((u) => !heroArr.includes(u))
+        const removedGallery = oldGallery.filter((u) => !galleryArr.includes(u))
+        for (const url of [...removedHero, ...removedGallery]) {
+          if (url && typeof url === 'string') {
+            try {
+              await deleteFromR2ByUrl(url)
+            } catch {
+              // Ignore per-URL failures; save should succeed
+            }
+          }
+        }
       }
+    } catch {
+      // Ignore; settings save must succeed even if R2 cleanup fails
     }
     const brand = (brandName !== undefined ? String(brandName).trim() : null) || 'Salon'
     const menu = (menuLabel !== undefined ? String(menuLabel).trim() : null) || 'Services'

@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf'
 import { format } from 'date-fns'
+import { formatTime12h } from './formatTime'
 import { numberToWords } from './numberToWords'
 import { formatCurrencyPdf } from './currency'
 
@@ -155,6 +156,10 @@ export function generateInvoicePDF(data: InvoiceData) {
   doc.setTextColor(...BLACK)
   doc.text(`Invoice No: ${invoiceNo}`, margin, yPos)
   doc.text(`Invoice Date: ${invoiceDate}`, pageWidth - margin, yPos, { align: 'right' })
+  if (data.timeSlot) {
+    yPos += 6
+    doc.text(`Appointment: ${formatTime12h(data.timeSlot)}`, margin, yPos)
+  }
   yPos += infoRowSpacing
 
   // ----- BILL TO BOX -----

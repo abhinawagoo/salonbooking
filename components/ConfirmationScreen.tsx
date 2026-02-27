@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { CheckCircle, Download, Printer, Home, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import { useRouter } from 'next/navigation'
+import { formatTime12h } from '@/lib/formatTime'
 import TaxInvoice from '@/components/TaxInvoice'
 
 interface Service {
@@ -136,6 +137,9 @@ export default function ConfirmationScreen({
         </div>
         <h1 className="text-3xl font-bold mb-2">Booking Confirmed!</h1>
         <p className="text-gray-600">Your appointment has been successfully booked</p>
+        <p className="mt-2 text-base font-medium text-gray-800">
+          {format(date instanceof Date ? date : new Date(date as string), 'EEEE, MMMM d, yyyy')} at {formatTime12h(timeSlot)}
+        </p>
         <div className="mt-6 flex flex-wrap items-center gap-3 justify-center">
           <button
             onClick={handleDownloadInvoice}
@@ -179,6 +183,7 @@ export default function ConfirmationScreen({
           logoUrl: locationImageUrl ?? undefined,
           invoiceNo: bookingToken,
           invoiceDate: format(date instanceof Date ? date : new Date(date as string), 'dd/MM/yyyy'),
+          appointmentTime: formatTime12h(timeSlot),
           customerName: customerName ?? undefined,
           customerMobile: customerMobile ?? undefined,
           services,
