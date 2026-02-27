@@ -82,68 +82,73 @@ export default function Navigation() {
               </span>
             </Link>
 
-            {/* Profile (top right) or Login – hidden when auth disabled */}
-            <div className="relative flex items-center gap-3 shrink-0" ref={profileRef}>
-              {!authDisabled && loggedInUser ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setProfileOpen((o) => !o)}
-                    className="flex items-center justify-center w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all duration-200 touch-manipulation ring-2 ring-transparent hover:ring-white/20"
-                    aria-label="Profile"
-                    aria-expanded={profileOpen}
-                  >
-                    <User size={20} />
-                  </button>
-                  {profileOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50 overflow-hidden">
-                      <div className="px-4 py-3 bg-gradient-to-r from-slate-50 to-white border-b border-gray-100">
-                        <p className="font-semibold text-gray-900 truncate">{loggedInUser.name}</p>
-                        <p className="text-xs text-gray-500 truncate">{loggedInUser.mobile}</p>
-                      </div>
-                      <Link
-                        href="/profile/bookings"
-                        onClick={() => setProfileOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-700 transition-colors"
-                      >
-                        <History size={18} />
-                        My Bookings
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 text-left transition-colors"
-                      >
-                        <LogOut size={18} />
-                        Logout
-                      </button>
-                    </div>
-                  )}
-                </>
-              ) : !authDisabled ? (
-                <Link
-                  href={`/login?returnTo=${encodeURIComponent(pathname || '/')}`}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all duration-200"
-                >
-                  <User size={18} />
-                  <span className="hidden sm:inline">Login</span>
-                </Link>
-              ) : null}
+            {/* Services + Book Appointment + Profile (rightmost) */}
+            <div className="relative flex items-center gap-2 sm:gap-3 shrink-0">
+              <Link
+                href="/services"
+                className={`${btnClass} bg-white/20 hover:bg-white/30 text-white border border-white/30`}
+              >
+                Services
+              </Link>
+              <Link
+                href="/booking/location"
+                className={`${btnClass} bg-white/20 hover:bg-white/30 text-white border border-white/30`}
+              >
+                <span>Book<br className="sm:hidden" /> Appointment</span>
+              </Link>
 
-              {/* Services + Book Appointment */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <Link
-                  href="/services"
-                  className={`${btnClass} bg-white/20 hover:bg-white/30 text-white border border-white/30`}
-                >
-                  Services
-                </Link>
-                <Link
-                  href="/booking/location"
-                  className={`${btnClass} bg-white/20 hover:bg-white/30 text-white border border-white/30`}
-                >
-                  <span>Book<br className="sm:hidden" /> Appointment</span>
-                </Link>
+              {/* Profile or Login – rightmost, hidden when auth disabled */}
+              <div className="relative" ref={profileRef}>
+                {!authDisabled && loggedInUser ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setProfileOpen((o) => !o)}
+                      className="flex items-center justify-center w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all duration-200 touch-manipulation ring-2 ring-transparent hover:ring-white/20"
+                      aria-label="Profile"
+                      aria-expanded={profileOpen}
+                    >
+                      <User size={20} />
+                    </button>
+                    {profileOpen && (
+                      <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50 overflow-hidden">
+                        <Link
+                          href="/profile"
+                          onClick={() => setProfileOpen(false)}
+                          className="block px-4 py-3 bg-gradient-to-r from-slate-50 to-white border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                        >
+                          <p className="font-semibold text-gray-900 truncate">{loggedInUser.name === 'Guest' ? 'Guest' : loggedInUser.name}</p>
+                          <p className="text-xs text-gray-500 truncate">+91 {loggedInUser.mobile}</p>
+                          <p className="text-xs text-primary-600 mt-0.5">View profile →</p>
+                        </Link>
+                        <Link
+                          href="/profile/bookings"
+                          onClick={() => setProfileOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-700 transition-colors"
+                        >
+                          <History size={18} />
+                          My Bookings
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 text-left transition-colors"
+                        >
+                          <LogOut size={18} />
+                          Logout
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : !authDisabled ? (
+                  <Link
+                    href={`/login?returnTo=${encodeURIComponent(pathname || '/')}`}
+                    className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all duration-200"
+                  >
+                    <User size={18} />
+                    <span className="hidden sm:inline">Login</span>
+                  </Link>
+                ) : null}
               </div>
             </div>
           </div>

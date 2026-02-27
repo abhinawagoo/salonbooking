@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { format, isToday, isAfter } from 'date-fns'
 import Link from 'next/link'
+import { formatTime12h } from '@/lib/formatTime'
 import { CheckCircle, Clock, Phone, User, Banknote, Download, Copy, MapPin, BarChart3, Edit3 } from 'lucide-react'
 import { setUserRole } from '@/lib/auth'
 
@@ -261,7 +262,7 @@ export default function StaffDashboard() {
             </span>
           </div>
           <div className="text-sm text-gray-600">
-            {format(new Date(booking.date), 'EEEE, MMMM d, yyyy')} at {booking.timeSlot}
+            {format(new Date(booking.date), 'EEEE, MMMM d, yyyy')} at {formatTime12h(booking.timeSlot)}
           </div>
         </div>
         {booking.status === 'BOOKED' && (

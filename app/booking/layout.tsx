@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { AUTH_DISABLED_FOR_NOW } from '@/lib/auth'
+import BookingHeader from '@/components/BookingHeader'
 
 export default function BookingLayout({
   children,
@@ -56,5 +57,10 @@ export default function BookingLayout({
     )
   }
 
-  return <>{children}</>
+  return (
+    <>
+      <BookingHeader />
+      {children}
+    </>
+  )
 }

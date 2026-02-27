@@ -14,10 +14,6 @@ export default function OtpForm() {
   const returnTo = searchParams.get('returnTo') || '/'
   const marketingConsent = searchParams.get('marketingConsent') !== 'false'
 
-  useEffect(() => {
-    router.replace(returnTo)
-  }, [router, returnTo])
-
   const [otp, setOtp] = useState<string[]>(['', '', '', ''])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')

@@ -32,6 +32,37 @@ All admin uploads (banner, videos, service images, gallery, subcategory images) 
 3. Under **Public access**, click **Allow Access**
 4. Copy the **Public bucket URL** (e.g. `https://pub-xxxxx.r2.dev`) – no trailing slash
 
+### B2. Add CORS policy (required for images to load on your website)
+
+Without CORS, images from R2 will be blocked by the browser when your site (e.g. `https://www.shahnazsalonsasaram.com`) loads them. Add a CORS policy:
+
+1. In your bucket → **Settings** → **CORS Policy** → **Add CORS policy**
+2. Switch to the **JSON** tab
+3. Paste this (replace with your domain if needed):
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://www.shahnazsalonsasaram.com", "https://shahnazsalonsasaram.com", "http://localhost:3000"],
+    "AllowedMethods": ["GET", "HEAD"]
+  }
+]
+```
+
+Or to allow all origins (simpler for public images):
+
+```json
+[
+  {
+    "AllowedOrigins": ["*"],
+    "AllowedMethods": ["GET", "HEAD"]
+  }
+]
+```
+
+4. Click **Save**
+5. CORS can take up to 30 seconds to propagate
+
 ### C. Create API token
 
 1. R2 → **Manage R2 API Tokens** (top right)

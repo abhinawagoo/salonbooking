@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Calendar, MapPin, CreditCard } from 'lucide-react'
 import { format } from 'date-fns'
+import { formatTime12h } from '@/lib/formatTime'
 import { AUTH_DISABLED_FOR_NOW } from '@/lib/auth'
 
 interface BookingItem {
@@ -100,7 +101,7 @@ export default function ProfileBookingsPage() {
                 <div className="p-4 space-y-3">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Calendar size={16} />
-                    {format(new Date(b.date), 'EEEE, MMM d, yyyy')} at {b.timeSlot}
+                    {format(new Date(b.date), 'EEEE, MMM d, yyyy')} at {formatTime12h(b.timeSlot)}
                   </div>
                   {(b.locationName || b.locationAddress) && (
                     <div className="flex items-start gap-2 text-sm text-gray-600">

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { format, addDays, isSameDay, startOfDay, isBefore, isAfter, setHours, setMinutes } from 'date-fns'
+import { formatTime12h } from '@/lib/formatTime'
 import { TIME_SLOTS, getSlotsInRange, isWithinClosingTime, MAX_BOOKINGS_PER_SLOT, parseBusinessHours, getDayConfig, getSlotsBetween } from '@/lib/slots'
 
 interface DateTimePickerProps {
@@ -225,7 +226,7 @@ export default function DateTimePicker({ onSelect, slotCounts = {}, durationMinu
                       : 'Available'
                   }
                 >
-                  <div className="font-medium">{timeSlot}</div>
+                  <div className="font-medium">{formatTime12h(timeSlot)}</div>
                   {count > 0 && status !== 'closed' && (
                     <div className="text-xs mt-1 opacity-75">
                       {count}/{MAX_BOOKINGS_PER_SLOT}
@@ -242,7 +243,7 @@ export default function DateTimePicker({ onSelect, slotCounts = {}, durationMinu
         <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
           <p className="text-sm text-gray-600">Selected:</p>
           <p className="font-semibold text-primary-700">
-            {format(selectedDate, 'EEEE, MMMM d, yyyy')} at {selectedTime}
+            {format(selectedDate, 'EEEE, MMMM d, yyyy')} at {formatTime12h(selectedTime)}
           </p>
         </div>
       )}

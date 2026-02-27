@@ -22,8 +22,10 @@ export default function CustomerDetailsPage() {
     fetch('/api/user/me')
       .then((r) => r.json())
       .then((data) => {
-        if (data?.user?.name && data?.user?.mobile) {
-          setProfile({ name: data.user.name, mobile: data.user.mobile })
+        if (data?.user?.mobile) {
+          // Only pre-fill name if user has set a real name (not "Guest" from OTP signup)
+          const name = data.user.name && data.user.name.trim() !== 'Guest' ? data.user.name : ''
+          setProfile({ name, mobile: data.user.mobile })
         }
       })
       .catch(() => {})

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { format, isToday, isPast, isFuture, startOfDay, parseISO, subDays } from 'date-fns'
 import { CheckCircle, XCircle, Clock, Calendar, ChevronDown, ChevronUp, Phone, User, DollarSign, Banknote, Edit3, Download } from 'lucide-react'
+import { formatTime12h } from '@/lib/formatTime'
 import { setUserRole } from '@/lib/auth'
 
 interface Location {
@@ -166,7 +167,7 @@ export default function AdminBookingsPage() {
       const services = b.services.map((bs) => `${bs.service.name} (₹${bs.price})`).join('; ')
       return {
         Date: format(new Date(b.date), 'yyyy-MM-dd'),
-        Time: b.timeSlot,
+        Time: formatTime12h(b.timeSlot),
         Token: b.token,
         Customer: b.user.name,
         Mobile: b.user.mobile,
@@ -518,7 +519,7 @@ export default function AdminBookingsPage() {
                                   <div className="lg:col-span-2">
                                     <div className="flex items-center gap-2 mb-2">
                                       <Clock className="text-gray-400" size={18} />
-                                      <span className="font-semibold text-lg">{booking.timeSlot}</span>
+                                      <span className="font-semibold text-lg">{formatTime12h(booking.timeSlot)}</span>
                                     </div>
                                     <div className="font-mono text-sm text-gray-500">{booking.token}</div>
                                   </div>

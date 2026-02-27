@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, BarChart3, Calendar, DollarSign, MapPin, Download } from 'lucide-react'
 import { setUserRole } from '@/lib/auth'
 import { format, parseISO, subDays } from 'date-fns'
+import { formatTime12h } from '@/lib/formatTime'
 
 interface Location {
   id: string
@@ -286,7 +287,7 @@ export default function AdminReportsPage() {
                       {report.bookings.map((b) => (
                         <tr key={b.id}>
                           <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900">
-                            {b.date ? format(typeof b.date === 'string' ? parseISO(b.date) : new Date(b.date), 'd MMM yyyy') : '–'} {b.timeSlot}
+                            {b.date ? format(typeof b.date === 'string' ? parseISO(b.date) : new Date(b.date), 'd MMM yyyy') : '–'} {formatTime12h(b.timeSlot)}
                           </td>
                           <td className="px-6 py-3 font-mono text-sm">{b.token}</td>
                           <td className="px-6 py-3 text-sm text-gray-600">{b.locationName ?? '–'}</td>

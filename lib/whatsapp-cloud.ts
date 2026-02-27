@@ -6,6 +6,7 @@
  */
 
 import { toE164 } from '@/lib/phone'
+import { formatTime12h } from '@/lib/formatTime'
 
 const GRAPH_API = 'https://graph.facebook.com/v21.0'
 
@@ -167,16 +168,6 @@ export async function sendInvoiceWhatsApp(
 ): Promise<{ ok: boolean; error?: string }> {
   const templateName = process.env.WHATSAPP_INVOICE_TEMPLATE_NAME || 'invoice_ready'
   return sendWhatsAppTemplate(mobile, templateName, [customerName, invoiceLink])
-}
-
-/**
- * Format time slot (e.g. "13:00") to 12-hour (e.g. "1:00 PM").
- */
-function formatTime12h(timeSlot: string): string {
-  const [h, m] = (timeSlot || '09:00').split(':').map(Number)
-  const hour = h % 12 || 12
-  const ampm = h < 12 ? 'AM' : 'PM'
-  return `${hour}:${String(m || 0).padStart(2, '0')} ${ampm}`
 }
 
 /**
