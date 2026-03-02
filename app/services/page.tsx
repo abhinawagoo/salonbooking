@@ -17,6 +17,8 @@ interface Service {
   subCategoryId?: string
 }
 
+type ServiceWithQty = Service & { quantity: number }
+
 interface SubCategory {
   id: string
   name: string
@@ -43,7 +45,7 @@ export default function ServicesPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null)
   const [subcategoryPopupCategory, setSubcategoryPopupCategory] = useState<Category | null>(null)
-  const [selectedServices, setSelectedServices] = useState<Service[]>([])
+  const [selectedServices, setSelectedServices] = useState<ServiceWithQty[]>([])
   const [modalService, setModalService] = useState<Service | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -51,9 +53,9 @@ export default function ServicesPage() {
     const savedServices = sessionStorage.getItem('selectedServices')
     if (savedServices) {
       try {
-        const parsed = JSON.parse(savedServices) as Service[]
+        const parsed = JSON.parse(savedServices) as (Service & { quantity?: number })[]
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setSelectedServices(parsed)
+          setSelectedServices(parsed.map((s) => ({ ...s, quantity: s.quantity ?? 1 })))
         }
       } catch {
         // ignore
@@ -119,18 +121,39 @@ export default function ServicesPage() {
   }
 
   const handleAddService = () => {
-    if (modalService && !selectedServices.some((s) => s.id === modalService.id)) {
-      setSelectedServices([...selectedServices, modalService])
-    }
+    if (!modalService) return
+    setSelectedServices((prev) => {
+      const existing = prev.find((s) => s.id === modalService.id)
+      if (existing) {
+        return prev.map((s) => (s.id === modalService.id ? { ...s, quantity: s.quantity + 1 } : s))
+      }
+      return [...prev, { ...modalService, quantity: 1 }]
+    })
     setModalService(null)
   }
 
-  const handleRemoveService = (serviceId: string) => {
+  const handleIncreaseQuantity = (serviceId: string) => {
+    setSelectedServices((prev) =>
+      prev.map((s) => (s.id === serviceId ? { ...s, quantity: s.quantity + 1 } : s))
+    )
+  }
+
+  const handleDecreaseQuantity = (serviceId: string) => {
+    setSelectedServices((prev) => {
+      const item = prev.find((s) => s.id === serviceId)
+      if (!item) return prev
+      if (item.quantity <= 1) return prev.filter((s) => s.id !== serviceId)
+      return prev.map((s) => (s.id === serviceId ? { ...s, quantity: s.quantity - 1 } : s))
+    })
+  }
+
+  const handleDeleteService = (serviceId: string) => {
     setSelectedServices((prev) => prev.filter((s) => s.id !== serviceId))
   }
 
   const handleContinue = () => {
-    if (selectedServices.length === 0) {
+    const totalItems = selectedServices.reduce((sum, s) => sum + s.quantity, 0)
+    if (totalItems === 0) {
       alert('Please add at least one service.')
       return
     }
@@ -138,10 +161,11 @@ export default function ServicesPage() {
     router.push('/cart')
   }
 
-  const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0)
+  const totalPrice = selectedServices.reduce((sum, s) => sum + s.price * s.quantity, 0)
+  const totalItems = selectedServices.reduce((sum, s) => sum + s.quantity, 0)
 
   return (
-    <div className={`min-h-screen bg-gray-50 ${selectedServices.length > 0 ? 'pb-28 sm:pb-24' : ''}`}>
+    <div className={`min-h-screen bg-gray-50 ${totalItems > 0 ? 'pb-28 sm:pb-24' : ''}`}>
       <div className="bg-white shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
           <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Browse Services</h1>
@@ -189,27 +213,32 @@ export default function ServicesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-4">
-            {displayServices.map((service) => (
-              <ServiceCard
-                key={service.id}
-                id={service.id}
-                name={service.name}
-                description={service.description}
-                price={service.price}
-                duration={service.duration}
-                imageUrl={service.imageUrl}
-                onAdd={() => handleServiceClick(service)}
-                isSelected={selectedServices.some((s) => s.id === service.id)}
-                onRemove={() => handleRemoveService(service.id)}
-              />
-            ))}
+            {displayServices.map((service) => {
+              const item = selectedServices.find((s) => s.id === service.id)
+              return (
+                <ServiceCard
+                  key={service.id}
+                  id={service.id}
+                  name={service.name}
+                  description={service.description}
+                  price={service.price}
+                  duration={service.duration}
+                  imageUrl={service.imageUrl}
+                  onAdd={() => handleServiceClick(service)}
+                  quantity={item?.quantity ?? 0}
+                  onIncrease={() => handleIncreaseQuantity(service.id)}
+                  onDecrease={() => handleDecreaseQuantity(service.id)}
+                  onDelete={() => handleDeleteService(service.id)}
+                />
+              )
+            })}
           </div>
         )}
       </div>
 
-      {selectedServices.length > 0 && (
+      {totalItems > 0 && (
         <CartBar
-          itemCount={selectedServices.length}
+          itemCount={totalItems}
           totalPrice={totalPrice}
           onContinue={handleContinue}
         />
@@ -273,8 +302,10 @@ export default function ServicesPage() {
           isOpen
           onClose={() => setModalService(null)}
           onAdd={handleAddService}
-          isSelected={modalService ? selectedServices.some((s) => s.id === modalService.id) : false}
-          onRemove={() => modalService && handleRemoveService(modalService.id)}
+          quantity={selectedServices.find((s) => s.id === modalService.id)?.quantity ?? 0}
+          onIncrease={() => modalService && handleIncreaseQuantity(modalService.id)}
+          onDecrease={() => modalService && handleDecreaseQuantity(modalService.id)}
+          onDelete={() => { modalService && handleDeleteService(modalService.id); setModalService(null) }}
         />
       )}
     </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { CreditCard, Wallet, Smartphone, Shield } from 'lucide-react'
+import { CreditCard, Wallet, Smartphone, Shield, Plus, Minus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
 interface Service {
@@ -8,15 +8,20 @@ interface Service {
   name: string
   price: number
   duration: number
+  quantity?: number
 }
 
 interface PaymentScreenProps {
   services: Service[]
   totalAmount: number
   onPaymentInitiate: (paymentType: 'FULL' | 'ADVANCE', paymentMethod?: string) => void
+  /** When provided, allow editing quantity. Updates services and total. */
+  onServicesChange?: (services: Service[]) => void
+  /** When true, briefly animate the total (e.g. scale bump) */
+  totalBump?: boolean
 }
 
-export default function PaymentScreen({ services, totalAmount, onPaymentInitiate }: PaymentScreenProps) {
+export default function PaymentScreen({ services, totalAmount, onPaymentInitiate, onServicesChange, totalBump = false }: PaymentScreenProps) {
   const [selectedPaymentType, setSelectedPaymentType] = useState<'FULL' | 'ADVANCE' | null>(null)
   const advanceAmount = totalAmount * 0.3 // 30% advance
 
@@ -26,14 +31,6 @@ export default function PaymentScreen({ services, totalAmount, onPaymentInitiate
       name: 'PhonePe',
       icon: '📱',
       description: 'UPI, Cards, Wallets',
-      available: true,
-    },
-    {
-      id: 'razorpay',
-      name: 'Razorpay',
-      icon: '💳',
-      description: 'Cards, UPI, Netbanking',
-      available: false, // Can be enabled later
     },
   ]
 
@@ -47,18 +44,73 @@ export default function PaymentScreen({ services, totalAmount, onPaymentInitiate
       <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 p-3 sm:p-6 shadow-sm">
         <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Booking Summary</h3>
         <div className="space-y-2 sm:space-y-3">
-          {services.map((service) => (
-            <div key={service.id} className="flex justify-between items-center py-2 border-b border-gray-100 gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-sm text-gray-900 truncate">{service.name}</p>
-                <p className="text-xs text-gray-500">{service.duration} min</p>
+          {services.map((service) => {
+            const qty = service.quantity ?? 1
+            const lineTotal = service.price * qty
+            const canEdit = !!onServicesChange
+            return (
+              <div key={service.id} className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[minmax(0,1fr)_auto_auto] items-center py-2 border-b border-gray-100 gap-2 sm:gap-3">
+                <div className="min-w-0 overflow-hidden">
+                  <p className="font-medium text-sm text-gray-900 break-words">{service.name}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{service.duration} min{qty > 1 ? ` · ×${qty}` : ''}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 justify-self-end">
+                  {canEdit && qty > 0 ? (
+                    <div className="flex items-center gap-1">
+                      <div className="flex items-center rounded-full border border-gray-200 overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (qty <= 1) return
+                            const updated = services.map((s) =>
+                              s.id === service.id ? { ...s, quantity: (s.quantity ?? 1) - 1 } : s
+                            ).filter((s) => (s.quantity ?? 1) > 0)
+                            onServicesChange(updated)
+                          }}
+                          className="flex items-center justify-center w-8 h-8 text-gray-600 hover:bg-gray-50"
+                          aria-label="Decrease"
+                        >
+                          <Minus size={16} />
+                        </button>
+                        <span className="min-w-[2rem] text-center text-sm font-medium">{qty}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = services.map((s) =>
+                              s.id === service.id ? { ...s, quantity: (s.quantity ?? 1) + 1 } : s
+                            )
+                            onServicesChange(updated)
+                          }}
+                          className="flex items-center justify-center w-8 h-8 text-gray-600 hover:bg-gray-50"
+                          aria-label="Increase"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = services.filter((s) => s.id !== service.id)
+                          onServicesChange(updated)
+                        }}
+                        className="flex items-center justify-center w-7 h-7 rounded text-red-500 hover:bg-red-50"
+                        aria-label="Remove all"
+                        title="Remove"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                <p className="text-sm font-semibold text-gray-900 shrink-0 justify-self-end">₹{lineTotal.toLocaleString('en-IN')}</p>
               </div>
-              <p className="text-sm font-semibold text-gray-900 shrink-0">₹{service.price}</p>
-            </div>
-          ))}
+            )
+          })}
           <div className="flex justify-between items-center pt-3 border-t-2 border-gray-200">
             <p className="text-sm sm:text-base font-semibold text-gray-900">Total</p>
-            <p className="text-base sm:text-xl font-semibold text-gray-900">₹{totalAmount.toLocaleString('en-IN')}</p>
+            <p className={`text-base sm:text-xl font-semibold text-gray-900 transition-transform duration-300 ${totalBump ? 'scale-110' : 'scale-100'}`}>
+              ₹{totalAmount.toLocaleString('en-IN')}
+            </p>
           </div>
         </div>
       </div>
@@ -128,11 +180,7 @@ export default function PaymentScreen({ services, totalAmount, onPaymentInitiate
               {paymentMethods.map((method) => (
                 <div
                   key={method.id}
-                  className={`p-3 sm:p-4 border-2 rounded-xl transition-all ${
-                    method.available
-                      ? 'border-gray-200 hover:border-black cursor-pointer'
-                      : 'border-gray-100 opacity-50 cursor-not-allowed'
-                  }`}
+                  className="p-3 sm:p-4 border-2 border-gray-200 rounded-xl transition-all hover:border-black cursor-pointer"
                 >
                   <div className="flex items-center gap-3 sm:gap-4">
                     <div className="text-xl sm:text-2xl">{method.icon}</div>
@@ -140,9 +188,6 @@ export default function PaymentScreen({ services, totalAmount, onPaymentInitiate
                       <p className="font-light text-sm sm:text-base text-gray-900">{method.name}</p>
                       <p className="text-xs sm:text-sm text-gray-500 font-light">{method.description}</p>
                     </div>
-                    {!method.available && (
-                      <span className="text-xs text-gray-400 font-light shrink-0">Coming Soon</span>
-                    )}
                   </div>
                 </div>
               ))}

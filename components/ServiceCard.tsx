@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Check } from 'lucide-react'
+import { Plus, Minus, Trash2 } from 'lucide-react'
 import { PLACEHOLDER_IMAGE } from '@/lib/placeholders'
 
 interface ServiceCardProps {
@@ -12,18 +12,23 @@ interface ServiceCardProps {
   imageUrl?: string
   duration: number
   onAdd: () => void
-  /** When true, show as already selected. Click to remove if onRemove provided. */
-  isSelected?: boolean
-  onRemove?: () => void
+  /** Quantity in cart. 0 = show Add button, >0 = show +/- counter */
+  quantity?: number
+  onIncrease?: () => void
+  onDecrease?: () => void
+  /** Remove item completely (all quantity) */
+  onDelete?: () => void
 }
 
-export default function ServiceCard({ name, description, price, imageUrl, duration, onAdd, isSelected = false, onRemove }: ServiceCardProps) {
+export default function ServiceCard({ name, description, price, imageUrl, duration, onAdd, quantity = 0, onIncrease, onDecrease, onDelete }: ServiceCardProps) {
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
 
+  const hasQuantity = quantity > 0
+
   return (
     <div className={`bg-white rounded-xl sm:rounded-2xl border overflow-hidden transition-all duration-200 group ${
-      isSelected ? 'border-green-400 bg-green-50/50 cursor-default ring-1 ring-green-300' : 'border-gray-200 hover:border-primary-300 hover:shadow-lg cursor-pointer'
+      hasQuantity ? 'border-primary-300 bg-primary-50/30 ring-1 ring-primary-200' : 'border-gray-200 hover:border-primary-300 hover:shadow-lg cursor-pointer'
     }`}>
       <div className="relative aspect-[4/3] w-full bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
         {imageUrl && !error ? (
@@ -58,22 +63,41 @@ export default function ServiceCard({ name, description, price, imageUrl, durati
         <p className="text-xs text-gray-400 mb-2 sm:mb-3">{duration} min</p>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 pt-2 sm:pt-4 border-t border-gray-100">
           <span className="text-base sm:text-2xl font-semibold sm:font-light text-gray-900">₹{price}</span>
-          {isSelected ? (
-            onRemove ? (
-              <button
-                type="button"
-                onClick={onRemove}
-                className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg bg-green-100 text-green-800 font-medium text-xs sm:text-sm min-h-[40px] sm:min-h-[44px] hover:bg-green-200 transition-colors touch-manipulation w-full sm:w-auto"
-              >
-                <Check size={14} className="sm:w-[18px] sm:h-[18px]" />
-                <span>Added</span>
-              </button>
-            ) : (
-              <div className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg bg-green-100 text-green-800 font-medium text-xs sm:text-sm min-h-[40px] sm:min-h-[44px]">
-                <Check size={14} className="sm:w-[18px] sm:h-[18px]" />
-                <span>Added</span>
+          {hasQuantity ? (
+            <div className="flex items-center gap-1">
+              <div className="flex items-center justify-center gap-0 rounded-full border-2 border-primary-400 min-h-[40px] sm:min-h-[44px] overflow-hidden bg-white">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onDecrease?.() }}
+                  className="flex items-center justify-center w-10 sm:w-12 h-full text-primary-600 hover:bg-primary-50 transition-colors touch-manipulation"
+                  aria-label="Decrease quantity"
+                >
+                  <Minus size={18} />
+                </button>
+                <span className="flex items-center justify-center min-w-[2rem] sm:min-w-[2.5rem] px-2 font-semibold text-primary-700 text-sm sm:text-base">
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onIncrease?.() }}
+                  className="flex items-center justify-center w-10 sm:w-12 h-full text-primary-600 hover:bg-primary-50 transition-colors touch-manipulation"
+                  aria-label="Increase quantity"
+                >
+                  <Plus size={18} />
+                </button>
               </div>
-            )
+              {onDelete && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onDelete() }}
+                  className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg text-red-500 hover:bg-red-50 transition-colors touch-manipulation shrink-0"
+                  aria-label="Remove all"
+                  title="Remove"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
           ) : (
             <button
               type="button"

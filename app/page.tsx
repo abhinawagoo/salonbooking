@@ -61,17 +61,15 @@ export default function HomePage() {
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] bg-gradient-to-br from-rose-50/80 via-white to-amber-50/50 relative overflow-hidden">
       <div className="flex-1 flex flex-col gap-4 sm:gap-5 px-4 py-4 sm:px-6 sm:py-5 md:px-8 md:py-6 min-h-0">
-        {/* Banner section */}
+        {/* Banner section - on top */}
         {bannerSlides.length > 0 && (
-          <div className="flex-[0.45] min-h-0 rounded-2xl sm:rounded-3xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.08)] ring-1 ring-rose-200/40">
+          <div className="flex-[0.45] min-h-0 overflow-visible">
             <HomeLandingBanner slides={bannerSlides} />
           </div>
         )}
-        {/* Video section */}
-        <div className={`${bannerSlides.length > 0 ? 'flex-[0.55]' : 'flex-1'} min-h-0 rounded-2xl sm:rounded-3xl overflow-hidden p-3 sm:p-4 md:p-5 bg-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.06)] ring-1 ring-rose-200/30`}>
-          <div className="w-full h-full rounded-xl sm:rounded-2xl overflow-hidden">
-            <HomeVideoCarousel videos={videos} />
-          </div>
+        {/* Video section - at bottom */}
+        <div className={`${bannerSlides.length > 0 ? 'flex-[0.55]' : 'flex-1'} min-h-0 overflow-visible`}>
+          <HomeVideoCarousel videos={videos} />
         </div>
       </div>
     </div>

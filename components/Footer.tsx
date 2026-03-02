@@ -32,17 +32,8 @@ export default function Footer() {
   }
 
   return (
-    <footer className="bg-[#f5f0e8] text-gray-700 mt-auto relative">
-      {/* Wavy top edge */}
-      <div className="absolute left-0 right-0 top-0 -translate-y-full w-full overflow-hidden">
-        <svg viewBox="0 0 1440 80" preserveAspectRatio="none" className="w-full h-12 sm:h-16">
-          <path
-            d="M0,40 C360,80 720,0 1080,40 C1260,60 1380,50 1440,40 L1440,80 L0,80 Z"
-            fill="#f5f0e8"
-          />
-        </svg>
-      </div>
-      <div className="relative max-w-4xl mx-auto px-4 pt-8 pb-6 sm:pt-10 sm:pb-8">
+    <footer className="bg-[#f5f0e8] text-gray-700 mt-auto border-t border-amber-200/70">
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
         {/* Accordion: About */}
         <div className="border-b border-amber-200/60">
           <button

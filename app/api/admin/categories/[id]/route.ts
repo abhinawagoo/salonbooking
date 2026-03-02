@@ -14,7 +14,24 @@ export async function PUT(
     if (slug !== undefined) updateData.slug = slug.trim().toLowerCase().replace(/\s+/g, '-')
     if (description !== undefined) updateData.description = description?.trim() || null
     if (order !== undefined) updateData.order = parseInt(String(order), 10)
-    if (isActive !== undefined) updateData.isActive = Boolean(isActive)
+    if (isActive !== undefined) {
+      updateData.isActive = Boolean(isActive)
+      if (!Boolean(isActive)) {
+        await prisma.subCategory.updateMany({
+          where: { categoryId: params.id },
+          data: { isActive: false },
+        })
+        await prisma.service.updateMany({
+          where: {
+            OR: [
+              { categoryId: params.id },
+              { subCategory: { categoryId: params.id } },
+            ],
+          },
+          data: { isActive: false },
+        })
+      }
+    }
     if (imageUrl !== undefined) {
       updateData.imageUrl = imageUrl?.trim() || null
       const existing = await prisma.category.findUnique({

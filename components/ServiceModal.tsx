@@ -1,6 +1,6 @@
 'use client'
 
-import { X, Check } from 'lucide-react'
+import { X, Plus, Minus, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 
 interface ServiceModalProps {
@@ -15,26 +15,18 @@ interface ServiceModalProps {
   isOpen: boolean
   onClose: () => void
   onAdd: () => void
-  /** When true, show as already selected. Pass onRemove to allow tap-to-remove. */
-  isSelected?: boolean
-  onRemove?: () => void
+  /** Quantity in cart. 0 = show Add button, >0 = show +/- counter */
+  quantity?: number
+  onIncrease?: () => void
+  onDecrease?: () => void
+  /** Remove item completely (all quantity) */
+  onDelete?: () => void
 }
 
-export default function ServiceModal({ service, isOpen, onClose, onAdd, isSelected = false, onRemove }: ServiceModalProps) {
+export default function ServiceModal({ service, isOpen, onClose, onAdd, quantity = 0, onIncrease, onDecrease, onDelete }: ServiceModalProps) {
   if (!isOpen) return null
 
-  const handleAdd = () => {
-    if (isSelected) return
-    onAdd()
-    onClose()
-  }
-
-  const handleRemove = () => {
-    if (isSelected && onRemove) {
-      onRemove()
-      onClose()
-    }
-  }
+  const hasQuantity = quantity > 0
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50" onClick={onClose}>
@@ -77,26 +69,45 @@ export default function ServiceModal({ service, isOpen, onClose, onAdd, isSelect
               <p className="font-semibold text-primary-600 text-xl">₹{service.price}</p>
             </div>
           </div>
-          {isSelected ? (
-            onRemove ? (
-              <button
-                type="button"
-                onClick={handleRemove}
-                className="w-full bg-green-100 text-green-800 py-3 rounded-lg font-semibold min-h-[48px] flex items-center justify-center gap-2 hover:bg-green-200 transition-colors touch-manipulation"
-              >
-                <Check size={20} />
-                Tap to remove
-              </button>
-            ) : (
-              <div className="w-full bg-green-100 text-green-800 py-3 rounded-lg font-semibold min-h-[48px] flex items-center justify-center gap-2">
-                <Check size={20} />
-                Already selected
+          {hasQuantity ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center gap-0 rounded-full border-2 border-primary-500 min-h-[48px] overflow-hidden bg-white">
+                <button
+                  type="button"
+                  onClick={onDecrease}
+                  className="flex items-center justify-center flex-1 h-full text-primary-600 hover:bg-primary-50 transition-colors touch-manipulation min-w-[48px]"
+                  aria-label="Decrease quantity"
+                >
+                  <Minus size={22} />
+                </button>
+                <span className="flex items-center justify-center min-w-[3rem] font-semibold text-primary-700 text-lg">
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={onIncrease}
+                  className="flex items-center justify-center flex-1 h-full text-primary-600 hover:bg-primary-50 transition-colors touch-manipulation min-w-[48px]"
+                  aria-label="Increase quantity"
+                >
+                  <Plus size={22} />
+                </button>
               </div>
-            )
+              {onDelete && (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="flex items-center justify-center w-10 h-10 rounded-lg text-red-500 hover:bg-red-50 transition-colors touch-manipulation shrink-0"
+                  aria-label="Remove all"
+                  title="Remove"
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
+            </div>
           ) : (
             <button
               type="button"
-              onClick={handleAdd}
+              onClick={onAdd}
               className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors min-h-[48px]"
             >
               Add to Booking

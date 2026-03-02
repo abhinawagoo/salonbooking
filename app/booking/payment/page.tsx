@@ -10,13 +10,23 @@ interface Service {
   name: string
   price: number
   duration: number
+  quantity?: number
 }
+
+const MAX_DURATION_MINUTES = 90 // 1.5 hours
 
 export default function PaymentPage() {
   const router = useRouter()
   const [services, setServices] = useState<Service[]>([])
   const [hasData, setHasData] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [totalBump, setTotalBump] = useState(false)
+  const [showDurationPopup, setShowDurationPopup] = useState(false)
+
+  const totalDurationMinutes = services.reduce(
+    (sum, s) => sum + s.duration * (s.quantity ?? 1),
+    0
+  )
 
   useEffect(() => {
     const location = sessionStorage.getItem('bookingLocation')
@@ -29,9 +39,22 @@ export default function PaymentPage() {
       return
     }
     
-    setServices(JSON.parse(servicesData))
+    const parsed = JSON.parse(servicesData) as (Service & { quantity?: number })[]
+    const loaded = parsed.map((s) => ({ ...s, quantity: s.quantity ?? 1 }))
+    setServices(loaded)
     setHasData(true)
+    const duration = loaded.reduce((sum, s) => sum + s.duration * (s.quantity ?? 1), 0)
+    if (duration > MAX_DURATION_MINUTES) setShowDurationPopup(true)
   }, [router])
+
+  const handleServicesChange = (updated: Service[]) => {
+    setServices(updated)
+    sessionStorage.setItem('selectedServices', JSON.stringify(updated))
+    setTotalBump(true)
+    setTimeout(() => setTotalBump(false), 400)
+    const duration = updated.reduce((sum, s) => sum + s.duration * (s.quantity ?? 1), 0)
+    if (duration > MAX_DURATION_MINUTES) setShowDurationPopup(true)
+  }
 
   const handlePaymentInitiate = async (paymentType: 'FULL' | 'ADVANCE', paymentMethod?: string) => {
     setIsProcessing(true)
@@ -40,6 +63,9 @@ export default function PaymentPage() {
       const dateTime = JSON.parse(sessionStorage.getItem('bookingDateTime') || '{}')
       
       const location = JSON.parse(sessionStorage.getItem('bookingLocation') || '{}')
+      const servicesPayload = services.flatMap((s) =>
+        Array((s.quantity ?? 1)).fill(null).map(() => s.id)
+      )
       const response = await fetch('/api/booking', {
         method: 'POST',
         headers: {
@@ -47,7 +73,7 @@ export default function PaymentPage() {
         },
         body: JSON.stringify({
           locationId: location.id,
-          services: services.map(s => s.id),
+          services: servicesPayload,
           customerDetails,
           date: dateTime.date,
           timeSlot: dateTime.timeSlot,
@@ -114,7 +140,7 @@ export default function PaymentPage() {
     return null
   }
 
-  const totalAmount = services.reduce((sum, service) => sum + service.price, 0)
+  const totalAmount = services.reduce((sum, s) => sum + s.price * (s.quantity ?? 1), 0)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
@@ -134,10 +160,29 @@ export default function PaymentPage() {
           </div>
         ) : (
           <>
+            {showDurationPopup && totalDurationMinutes > MAX_DURATION_MINUTES && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Important</h3>
+                  <p className="text-gray-600 text-sm mb-6">
+                    Your appointment duration is over 1.5 hours. Please be present at the right time for your booking. We recommend arriving <strong>10 minutes before</strong> your scheduled time.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowDurationPopup(false)}
+                    className="w-full py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800"
+                  >
+                    OK
+                  </button>
+                </div>
+              </div>
+            )}
             <PaymentScreen
               services={services}
               totalAmount={totalAmount}
               onPaymentInitiate={handlePaymentInitiate}
+              onServicesChange={handleServicesChange}
+              totalBump={totalBump}
             />
             <p className="mt-6 pt-4 border-t border-gray-200 text-center text-xs text-gray-500">
               <Link href="/terms" className="text-primary-600 hover:underline">Terms</Link>

@@ -64,13 +64,13 @@ export default function AdminDashboard() {
       const res = await fetch(`/api/admin/services/${deleteConfirm.id}`, { method: 'DELETE' })
       if (!res.ok) {
         const err = await res.json()
-        throw new Error(err.error || 'Failed to deactivate')
+        throw new Error(err.error || 'Failed to delete')
       }
       setDeleteConfirm(null)
       fetchServices()
     } catch (error) {
-      console.error('Error deactivating service:', error)
-      alert(error instanceof Error ? error.message : 'Failed to deactivate service')
+      console.error('Error deleting service:', error)
+      alert(error instanceof Error ? error.message : 'Failed to delete service')
     }
   }
 
@@ -221,7 +221,7 @@ export default function AdminDashboard() {
                           <button
                             onClick={() => handleDeleteClick(service)}
                             className="text-red-600 hover:text-red-900 p-2"
-                            title="Deactivate service"
+                            title="Delete or deactivate service"
                           >
                             <Trash2 size={18} />
                           </button>
@@ -290,30 +290,56 @@ export default function AdminDashboard() {
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Deactivate service?</h3>
-            <p className="text-gray-600 text-sm mb-4">
-              This service cannot be permanently deleted because it has{' '}
-              <strong>{(deleteConfirm.bookingCount ?? 0)} booking(s)</strong>. Past bookings need to retain the service details.
-            </p>
-            <p className="text-gray-600 text-sm mb-6">
-              Deactivating will hide this service from customers. It will no longer appear in the booking flow. You can reactivate it anytime using the status toggle.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm(null)}
-                className="px-4 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteConfirm}
-                className="px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
-              >
-                Deactivate
-              </button>
-            </div>
+            {(deleteConfirm.bookingCount ?? 0) === 0 ? (
+              <>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Delete service permanently?</h3>
+                <p className="text-gray-600 text-sm mb-6">
+                  This service has no bookings. It will be permanently removed. This action cannot be undone.
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirm(null)}
+                    className="px-4 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteConfirm}
+                    className="px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
+                  >
+                    Delete permanently
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Deactivate service?</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  This service has <strong>{deleteConfirm.bookingCount} booking(s)</strong>. Past bookings need to retain the service details, so it cannot be permanently deleted.
+                </p>
+                <p className="text-gray-600 text-sm mb-6">
+                  Deactivating will hide this service from customers. It will no longer appear in the booking flow. You can reactivate it anytime using the status toggle.
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirm(null)}
+                    className="px-4 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteConfirm}
+                    className="px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
+                  >
+                    Deactivate
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

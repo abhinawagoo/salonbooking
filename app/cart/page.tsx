@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Plus, Minus } from 'lucide-react'
+import { ArrowLeft, Plus, Minus, Trash2 } from 'lucide-react'
 import { AUTH_DISABLED_FOR_NOW } from '@/lib/auth'
 
 interface ServiceItem {
@@ -56,17 +56,18 @@ export default function CartPage() {
 
   const updateQuantity = (id: string, delta: number) => {
     setItems((prev) => {
-      const next = prev.map((s) =>
-        s.id === id ? { ...s, quantity: Math.max(1, (s.quantity ?? 1) + delta) } : s
-      )
+      const next = prev
+        .map((s) => (s.id === id ? { ...s, quantity: (s.quantity ?? 1) + delta } : s))
+        .filter((s) => (s.quantity ?? 1) > 0)
       sessionStorage.setItem('selectedServices', JSON.stringify(next))
       return next
     })
   }
 
   const addSuggestion = (s: ServiceItem) => {
-    if (items.some((i) => i.id === s.id)) return
-    const next = [...items, { ...s, quantity: 1 }]
+    const next = items.some((i) => i.id === s.id)
+      ? items.map((i) => (i.id === s.id ? { ...i, quantity: (i.quantity ?? 1) + 1 } : i))
+      : [...items, { ...s, quantity: 1 }]
     setItems(next)
     sessionStorage.setItem('selectedServices', JSON.stringify(next))
   }
@@ -139,6 +140,15 @@ export default function CartPage() {
                     className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50"
                   >
                     <Plus size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateQuantity(s.id, -(s.quantity ?? 1))}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50"
+                    aria-label="Remove all"
+                    title="Remove"
+                  >
+                    <Trash2 size={18} />
                   </button>
                 </div>
               </div>

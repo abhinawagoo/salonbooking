@@ -97,23 +97,30 @@ export async function POST(request: Request) {
       user = { ...user, name: customerDetails.name }
     }
 
-    // Get service details
+    // Get service details (services may contain duplicates for quantity)
+    const serviceIds = services as string[]
+    const uniqueIds = [...new Set(serviceIds)] as string[]
     const serviceDetails = await prisma.service.findMany({
       where: {
-        id: { in: services },
+        id: { in: uniqueIds },
         isActive: true,
       },
     })
 
-    if (serviceDetails.length !== services.length) {
+    const serviceMap = new Map(serviceDetails.map((s) => [s.id, s]))
+    const invalidIds = serviceIds.filter((id) => !serviceMap.has(id))
+    if (invalidIds.length > 0) {
       return NextResponse.json(
         { error: 'Some services are invalid or inactive' },
         { status: 400 }
       )
     }
 
-    // Total service duration (minutes)
-    const totalDurationMinutes = Math.max(30, serviceDetails.reduce((sum, s) => sum + s.duration, 0))
+    // Total service duration (minutes) - sum duration for each instance
+    const totalDurationMinutes = Math.max(
+      30,
+      serviceIds.reduce((sum, id) => sum + (serviceMap.get(id)?.duration ?? 0), 0)
+    )
 
     // Validate: day is open and time is within business hours (per location)
     const bookingDate = new Date(date)
@@ -187,8 +194,8 @@ export async function POST(request: Request) {
       )
     }
 
-    // Calculate total amount
-    const totalAmount = serviceDetails.reduce((sum, service) => sum + service.price, 0)
+    // Calculate total amount - sum price for each service instance
+    const totalAmount = serviceIds.reduce((sum, id) => sum + (serviceMap.get(id)?.price ?? 0), 0)
     const advanceAmount = paymentType === 'ADVANCE' ? totalAmount * 0.3 : totalAmount
 
     // Generate booking token
@@ -206,10 +213,10 @@ export async function POST(request: Request) {
         notes: customerDetails.notes,
         token: bookingToken,
         services: {
-          create: serviceDetails.map((service) => ({
-            serviceId: service.id,
-            price: service.price,
-          })),
+          create: serviceIds.map((serviceId) => {
+            const s = serviceMap.get(serviceId)!
+            return { serviceId: s.id, price: s.price }
+          }),
         },
         payment: {
           create: {

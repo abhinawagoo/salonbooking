@@ -17,6 +17,8 @@ interface Service {
   subCategoryId?: string
 }
 
+type ServiceWithQty = Service & { quantity: number }
+
 interface SubCategory {
   id: string
   name: string
@@ -44,7 +46,8 @@ export default function BookingServicesPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null)
   const [subcategoryPopupCategory, setSubcategoryPopupCategory] = useState<Category | null>(null)
-  const [selectedServices, setSelectedServices] = useState<Service[]>([])
+  const [selectedServices, setSelectedServices] = useState<ServiceWithQty[]>([])
+  const [totalBump, setTotalBump] = useState(false)
   const [modalService, setModalService] = useState<Service | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -60,9 +63,9 @@ export default function BookingServicesPage() {
     const savedServices = sessionStorage.getItem('selectedServices')
     if (savedServices) {
       try {
-        const parsed = JSON.parse(savedServices) as Service[]
+        const parsed = JSON.parse(savedServices) as (Service & { quantity?: number })[]
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setSelectedServices(parsed)
+          setSelectedServices(parsed.map((s) => ({ ...s, quantity: s.quantity ?? 1 })))
         }
       } catch {
         // ignore
@@ -129,18 +132,43 @@ export default function BookingServicesPage() {
   }
 
   const handleAddService = () => {
-    if (modalService && !selectedServices.some((s) => s.id === modalService.id)) {
-      setSelectedServices([...selectedServices, modalService])
-    }
+    if (!modalService) return
+    setSelectedServices((prev) => {
+      const existing = prev.find((s) => s.id === modalService.id)
+      if (existing) {
+        return prev.map((s) => (s.id === modalService.id ? { ...s, quantity: s.quantity + 1 } : s))
+      }
+      return [...prev, { ...modalService, quantity: 1 }]
+    })
+    setTotalBump(true)
+    setTimeout(() => setTotalBump(false), 400)
     setModalService(null)
   }
 
-  const handleRemoveService = (serviceId: string) => {
+  const handleIncreaseQuantity = (serviceId: string) => {
+    setSelectedServices((prev) =>
+      prev.map((s) => (s.id === serviceId ? { ...s, quantity: s.quantity + 1 } : s))
+    )
+    setTotalBump(true)
+    setTimeout(() => setTotalBump(false), 400)
+  }
+
+  const handleDecreaseQuantity = (serviceId: string) => {
+    setSelectedServices((prev) => {
+      const item = prev.find((s) => s.id === serviceId)
+      if (!item) return prev
+      if (item.quantity <= 1) return prev.filter((s) => s.id !== serviceId)
+      return prev.map((s) => (s.id === serviceId ? { ...s, quantity: s.quantity - 1 } : s))
+    })
+  }
+
+  const handleDeleteService = (serviceId: string) => {
     setSelectedServices((prev) => prev.filter((s) => s.id !== serviceId))
   }
 
   const handleContinue = () => {
-    if (selectedServices.length === 0) {
+    const totalItems = selectedServices.reduce((sum, s) => sum + s.quantity, 0)
+    if (totalItems === 0) {
       alert('Please add at least one service.')
       return
     }
@@ -152,7 +180,8 @@ export default function BookingServicesPage() {
     return null
   }
 
-  const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0)
+  const totalPrice = selectedServices.reduce((sum, s) => sum + s.price * s.quantity, 0)
+  const totalItems = selectedServices.reduce((sum, s) => sum + s.quantity, 0)
 
   return (
     <div className="min-h-screen bg-gray-50 pb-28 sm:pb-24">
@@ -203,20 +232,25 @@ export default function BookingServicesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-4">
-            {displayServices.map((service) => (
-              <ServiceCard
-                key={service.id}
-                id={service.id}
-                name={service.name}
-                description={service.description}
-                price={service.price}
-                duration={service.duration}
-                imageUrl={service.imageUrl}
-                onAdd={() => handleServiceClick(service)}
-                isSelected={selectedServices.some((s) => s.id === service.id)}
-                onRemove={() => handleRemoveService(service.id)}
-              />
-            ))}
+            {displayServices.map((service) => {
+              const item = selectedServices.find((s) => s.id === service.id)
+              return (
+                <ServiceCard
+                  key={service.id}
+                  id={service.id}
+                  name={service.name}
+                  description={service.description}
+                  price={service.price}
+                  duration={service.duration}
+                  imageUrl={service.imageUrl}
+                  onAdd={() => handleServiceClick(service)}
+                  quantity={item?.quantity ?? 0}
+                  onIncrease={() => handleIncreaseQuantity(service.id)}
+                  onDecrease={() => handleDecreaseQuantity(service.id)}
+                  onDelete={() => handleDeleteService(service.id)}
+                />
+              )
+            })}
           </div>
         )}
       </div>
@@ -224,13 +258,13 @@ export default function BookingServicesPage() {
       {/* Bottom bar: selected count + continue - always visible on mobile */}
       <div className="fixed left-0 right-0 bottom-0 bg-white border-t border-gray-200 shadow-lg z-50 p-3 sm:p-4 pb-[env(safe-area-inset-bottom)]">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 sm:gap-3 min-h-[52px]">
-          <p className="text-gray-700 font-medium text-sm sm:text-base truncate min-w-0">
-            {selectedServices.length} {selectedServices.length === 1 ? 'service' : 'services'} · ₹{totalPrice.toLocaleString('en-IN')}
+          <p className={`text-gray-700 font-medium text-sm sm:text-base truncate min-w-0 transition-transform duration-300 ${totalBump ? 'scale-110' : 'scale-100'}`}>
+            {totalItems} {totalItems === 1 ? 'item' : 'items'} · ₹{totalPrice.toLocaleString('en-IN')}
           </p>
           <button
             type="button"
             onClick={handleContinue}
-            disabled={selectedServices.length === 0}
+            disabled={totalItems === 0}
             className="flex-shrink-0 flex items-center justify-center gap-1.5 sm:gap-2 bg-gray-900 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-medium text-sm sm:text-base hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[44px] touch-manipulation"
           >
             <span className="whitespace-nowrap">Continue to payment</span>
@@ -297,8 +331,10 @@ export default function BookingServicesPage() {
           isOpen
           onClose={() => setModalService(null)}
           onAdd={handleAddService}
-          isSelected={modalService ? selectedServices.some((s) => s.id === modalService.id) : false}
-          onRemove={() => modalService && handleRemoveService(modalService.id)}
+          quantity={selectedServices.find((s) => s.id === modalService.id)?.quantity ?? 0}
+          onIncrease={() => modalService && handleIncreaseQuantity(modalService.id)}
+          onDecrease={() => modalService && handleDecreaseQuantity(modalService.id)}
+          onDelete={() => { modalService && handleDeleteService(modalService.id); setModalService(null) }}
         />
       )}
     </div>

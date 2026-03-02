@@ -35,7 +35,7 @@ export default function AdminCategoriesPage() {
   const [editingSub, setEditingSub] = useState<SubCategory | null>(null)
   const [parentCategory, setParentCategory] = useState<Category | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [form, setForm] = useState({ name: '', slug: '', description: '', order: 0 })
+  const [form, setForm] = useState({ name: '', slug: '', description: '', order: 0, isActive: true })
   const [subForm, setSubForm] = useState({ name: '', slug: '', description: '', order: 0, imageUrl: '' })
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -68,7 +68,7 @@ export default function AdminCategoriesPage() {
 
   const openAdd = () => {
     setEditing(null)
-    setForm({ name: '', slug: '', description: '', order: categories.length })
+    setForm({ name: '', slug: '', description: '', order: categories.length, isActive: true })
     setModal('add')
   }
 
@@ -79,8 +79,23 @@ export default function AdminCategoriesPage() {
       slug: cat.slug,
       description: cat.description || '',
       order: cat.order,
+      isActive: cat.isActive ?? true,
     })
     setModal('edit')
+  }
+
+  const handleToggleActive = async (cat: Category) => {
+    try {
+      const res = await fetch(`/api/admin/categories/${cat.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !cat.isActive }),
+      })
+      if (!res.ok) throw new Error('Failed to update')
+      fetchCategories()
+    } catch {
+      alert('Failed to update')
+    }
   }
 
   const openAddSub = (cat: Category) => {
@@ -309,6 +324,15 @@ export default function AdminCategoriesPage() {
                           {subs.length > 0 && ` · ${subs.length} subcategories`}
                         </p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleActive(cat)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          cat.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        {cat.isActive ? 'Active' : 'Inactive'}
+                      </button>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -427,6 +451,18 @@ export default function AdminCategoriesPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   placeholder="e.g. Hair cut, straightening, colour..."
                 />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="cat-isActive"
+                  checked={form.isActive}
+                  onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
+                  className="rounded border-gray-300"
+                />
+                <label htmlFor="cat-isActive" className="text-sm font-medium text-gray-700">
+                  Active (visible to customers)
+                </label>
               </div>
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={() => setModal(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">

@@ -84,11 +84,27 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Soft delete: set isActive=false to preserve booking history (BookingService references this service)
-    await prisma.service.update({
-      where: { id: params.id },
-      data: { isActive: false },
+    const count = await prisma.bookingService.count({
+      where: { serviceId: params.id },
     })
+
+    if (count === 0) {
+      // No bookings: permanently delete
+      const existing = await prisma.service.findUnique({
+        where: { id: params.id },
+        select: { imageUrl: true },
+      })
+      await prisma.service.delete({ where: { id: params.id } })
+      if (existing?.imageUrl) {
+        await deleteFromR2ByUrl(existing.imageUrl).catch(() => {})
+      }
+    } else {
+      // Has bookings: deactivate to preserve booking history
+      await prisma.service.update({
+        where: { id: params.id },
+        data: { isActive: false },
+      })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

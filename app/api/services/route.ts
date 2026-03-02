@@ -21,6 +21,10 @@ export async function GET(request: Request) {
       where: {
         isActive: true,
         ...(categoryId ? { categoryId } : {}),
+        AND: [
+          { OR: [{ categoryId: null }, { category: { isActive: true } }] },
+          { OR: [{ subCategoryId: null }, { subCategory: { isActive: true } }] },
+        ],
       },
       orderBy: { name: 'asc' },
     })

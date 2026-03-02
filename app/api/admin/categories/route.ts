@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Database client not ready' }, { status: 503 })
     }
     const body = await request.json()
-    const { name, slug, description, order } = body
+    const { name, slug, description, order, isActive } = body
     if (!name || !slug) {
       return NextResponse.json({ error: 'Name and slug are required' }, { status: 400 })
     }
@@ -41,6 +41,7 @@ export async function POST(request: Request) {
         slug: slug.trim().toLowerCase().replace(/\s+/g, '-'),
         description: description?.trim() || null,
         order: order ?? (last ? last.order + 1 : 0),
+        isActive: isActive !== false,
       },
     })
     return NextResponse.json(category, { status: 201 })
