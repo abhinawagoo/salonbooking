@@ -84,15 +84,15 @@ export function getSlotsInRange(startSlot: string, durationMinutes: number): str
 const CLOSING_BUFFER_MIN = 30
 
 /**
- * Check if a slot is bookable: user can book up to 30 min before closing.
- * Last valid start = closeTime - 30 min (does not depend on service duration).
+ * Check if a slot is bookable: appointment must end before closing.
+ * Uses actual duration to ensure start + duration fits within closing time.
  */
 export function isWithinClosingTime(
   startSlot: string,
-  _durationMinutes: number,
+  durationMinutes: number,
   closeTime?: string
 ): boolean {
-  const slots = getSlotsInRange(startSlot, SLOT_INTERVAL_MINUTES)
+  const slots = getSlotsInRange(startSlot, durationMinutes)
   if (slots.length === 0) return false
   const lastSlot = slots[slots.length - 1]
   const lastIdx = TIME_SLOTS.indexOf(lastSlot)

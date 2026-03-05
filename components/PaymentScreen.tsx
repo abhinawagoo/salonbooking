@@ -19,10 +19,17 @@ interface PaymentScreenProps {
   onServicesChange?: (services: Service[]) => void
   /** When true, briefly animate the total (e.g. scale bump) */
   totalBump?: boolean
+  /** When true, disable payment buttons (e.g. when booking exceeds closing time) */
+  disabled?: boolean
+  /** Controlled: selected payment type from parent */
+  selectedPaymentType?: 'FULL' | 'ADVANCE' | null
+  /** Called when user selects Full or Advance (before Pay Now). Use to show arrival popup. */
+  onPaymentTypeSelect?: (paymentType: 'FULL' | 'ADVANCE') => void
 }
 
-export default function PaymentScreen({ services, totalAmount, onPaymentInitiate, onServicesChange, totalBump = false }: PaymentScreenProps) {
-  const [selectedPaymentType, setSelectedPaymentType] = useState<'FULL' | 'ADVANCE' | null>(null)
+export default function PaymentScreen({ services, totalAmount, onPaymentInitiate, onServicesChange, totalBump = false, disabled = false, selectedPaymentType: controlledType, onPaymentTypeSelect }: PaymentScreenProps) {
+  const [internalType, setInternalType] = useState<'FULL' | 'ADVANCE' | null>(null)
+  const selectedPaymentType = controlledType ?? internalType
   const advanceAmount = totalAmount * 0.3 // 30% advance
 
   const paymentMethods = [
@@ -34,9 +41,12 @@ export default function PaymentScreen({ services, totalAmount, onPaymentInitiate
     },
   ]
 
-  const handlePayment = (paymentType: 'FULL' | 'ADVANCE') => {
-    setSelectedPaymentType(paymentType)
-    // Don't trigger payment immediately - wait for user to click "Pay Now"
+  const handlePaymentTypeClick = (paymentType: 'FULL' | 'ADVANCE') => {
+    if (onPaymentTypeSelect) {
+      onPaymentTypeSelect(paymentType)
+    } else {
+      setInternalType(paymentType)
+    }
   }
 
   return (
@@ -119,8 +129,11 @@ export default function PaymentScreen({ services, totalAmount, onPaymentInitiate
         <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Payment Amount</h3>
         <div className="space-y-2 sm:space-y-3">
           <button
-            onClick={() => handlePayment('FULL')}
+            onClick={() => !disabled && handlePaymentTypeClick('FULL')}
+            disabled={disabled}
             className={`w-full p-3 sm:p-5 border-2 rounded-xl transition-all duration-200 text-left min-h-[64px] sm:min-h-[80px] touch-manipulation ${
+              disabled ? 'opacity-60 cursor-not-allowed' : ''
+            } ${
               selectedPaymentType === 'FULL'
                 ? 'border-black bg-black text-white'
                 : 'border-gray-200 hover:border-gray-300 bg-white'
@@ -142,8 +155,11 @@ export default function PaymentScreen({ services, totalAmount, onPaymentInitiate
           </button>
 
           <button
-            onClick={() => handlePayment('ADVANCE')}
+            onClick={() => !disabled && handlePaymentTypeClick('ADVANCE')}
+            disabled={disabled}
             className={`w-full p-3 sm:p-5 border-2 rounded-xl transition-all duration-200 text-left min-h-[64px] sm:min-h-[80px] touch-manipulation ${
+              disabled ? 'opacity-60 cursor-not-allowed' : ''
+            } ${
               selectedPaymentType === 'ADVANCE'
                 ? 'border-black bg-black text-white'
                 : 'border-gray-200 hover:border-gray-300 bg-white'
@@ -196,8 +212,11 @@ export default function PaymentScreen({ services, totalAmount, onPaymentInitiate
 
           <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 p-3 sm:p-6 shadow-sm">
             <button
-              onClick={() => onPaymentInitiate(selectedPaymentType)}
-              className="w-full bg-black text-white py-3 rounded-full font-semibold text-base hover:bg-gray-800 transition-all duration-200 shadow-lg min-h-[48px] touch-manipulation"
+              onClick={() => !disabled && onPaymentInitiate(selectedPaymentType)}
+              disabled={disabled}
+              className={`w-full bg-black text-white py-3 rounded-full font-semibold text-base hover:bg-gray-800 transition-all duration-200 shadow-lg min-h-[48px] touch-manipulation ${
+                disabled ? 'opacity-60 cursor-not-allowed' : ''
+              }`}
             >
               Pay ₹{selectedPaymentType === 'FULL' ? totalAmount.toLocaleString('en-IN') : Math.round(totalAmount * 0.3).toLocaleString('en-IN')} Now
             </button>

@@ -29,6 +29,8 @@ export default function HomePage() {
 
   useEffect(() => {
     setUserRole('CUSTOMER')
+    // Clear selected services when landing on home (refresh or navigate back) - start fresh
+    sessionStorage.removeItem('selectedServices')
     Promise.all([
       fetch('/api/settings').then((r) => r.json()),
       fetch('/api/home/videos').then((r) => r.json()),

@@ -12,6 +12,8 @@ interface ServiceCardProps {
   imageUrl?: string
   duration: number
   onAdd: () => void
+  /** Called when user clicks the card (image/name/description) to view details. Opens modal. */
+  onCardClick?: () => void
   /** Quantity in cart. 0 = show Add button, >0 = show +/- counter */
   quantity?: number
   onIncrease?: () => void
@@ -20,17 +22,26 @@ interface ServiceCardProps {
   onDelete?: () => void
 }
 
-export default function ServiceCard({ name, description, price, imageUrl, duration, onAdd, quantity = 0, onIncrease, onDecrease, onDelete }: ServiceCardProps) {
+export default function ServiceCard({ name, description, price, imageUrl, duration, onAdd, onCardClick, quantity = 0, onIncrease, onDecrease, onDelete }: ServiceCardProps) {
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
 
   const hasQuantity = quantity > 0
 
+  const handleCardClick = onCardClick ?? onAdd
+
   return (
-    <div className={`bg-white rounded-xl sm:rounded-2xl border overflow-hidden transition-all duration-200 group ${
-      hasQuantity ? 'border-primary-300 bg-primary-50/30 ring-1 ring-primary-200' : 'border-gray-200 hover:border-primary-300 hover:shadow-lg cursor-pointer'
+    <div className={`bg-white rounded-xl sm:rounded-2xl border overflow-hidden transition-all duration-200 group flex flex-col h-full min-h-[280px] sm:min-h-[320px] ${
+      hasQuantity ? 'border-primary-300 bg-primary-50/30 ring-1 ring-primary-200' : 'border-gray-200 hover:border-primary-300 hover:shadow-lg'
     }`}>
-      <div className="relative aspect-[4/3] w-full bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={handleCardClick}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCardClick() } }}
+        className="flex flex-col flex-1 min-h-0 shrink-0 cursor-pointer"
+      >
+        <div className="relative aspect-[4/3] w-full bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden shrink-0">
         {imageUrl && !error ? (
           <>
             <img
@@ -54,14 +65,19 @@ export default function ServiceCard({ name, description, price, imageUrl, durati
             <span className="text-primary-500 text-2xl sm:text-3xl font-light">{name.charAt(0)}</span>
           </div>
         )}
+        </div>
+        <div className="p-3 sm:p-4 flex flex-col flex-1 min-h-0">
+        <div className="flex-1 min-h-0">
+          <h3 className="font-semibold text-sm sm:text-lg text-gray-900 mb-0.5 sm:mb-1 line-clamp-2">{name}</h3>
+          {description ? (
+            <p className="text-xs sm:text-sm text-gray-500 line-clamp-3">{description}</p>
+          ) : (
+            <p className="text-xs sm:text-sm text-gray-400 italic line-clamp-2">No description</p>
+          )}
+          <p className="text-xs text-gray-400 mt-1">{duration} min</p>
+        </div>
       </div>
-      <div className="p-3 sm:p-5">
-        <h3 className="font-semibold text-sm sm:text-lg text-gray-900 mb-0.5 sm:mb-1 line-clamp-2">{name}</h3>
-        {description && (
-          <p className="text-xs sm:text-sm text-gray-500 mb-1 sm:mb-2 line-clamp-2 hidden sm:block">{description}</p>
-        )}
-        <p className="text-xs text-gray-400 mb-2 sm:mb-3">{duration} min</p>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 pt-2 sm:pt-4 border-t border-gray-100">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 p-3 sm:p-4 pt-3 border-t border-gray-100 shrink-0">
           <span className="text-base sm:text-2xl font-semibold sm:font-light text-gray-900">₹{price}</span>
           {hasQuantity ? (
             <div className="flex items-center gap-1">

@@ -133,7 +133,8 @@ model BookingService {
   booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   serviceId String
   service   Service  @relation(fields: [serviceId], references: [id])
-  price     Float    // Price at time of booking
+  price     Float    // Total price at time of booking (unit price × quantity)
+  quantity  Int      @default(1) // Number of units
   
   createdAt DateTime @default(now())
   

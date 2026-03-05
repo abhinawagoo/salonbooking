@@ -47,10 +47,11 @@ export async function POST(request: Request) {
         locationAddress: booking.location?.address ?? undefined,
         locationMobile: booking.location?.mobile ?? undefined,
         locationImageUrl: booking.location?.imageUrl ?? undefined,
-        services: booking.services.map((bs, idx) => ({
+        services: booking.services.map((bs) => ({
           id: bs.service.id,
           name: bs.service.name,
           price: bs.price,
+          quantity: bs.quantity ?? 1,
         })),
         paymentStatus: booking.payment?.paymentStatus ?? 'PENDING',
         totalAmount,

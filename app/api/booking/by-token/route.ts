@@ -40,6 +40,7 @@ export async function GET(request: Request) {
         id: bs.service.id,
         name: bs.service.name,
         price: bs.price,
+        quantity: bs.quantity ?? 1,
       })),
       paymentStatus: booking.payment?.paymentStatus || 'PENDING',
       totalAmount,

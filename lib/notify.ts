@@ -227,7 +227,10 @@ export function buildBookingNotificationPayload(
   paymentTotal: number
 ): BookingNotificationPayload {
   const date = typeof booking.date === 'string' ? booking.date : booking.date.toISOString().slice(0, 10)
-  const servicesSummary = booking.services.map((s) => `${s.service.name} (₹${s.price})`).join(', ')
+  const servicesSummary = booking.services.map((s) => {
+    const qty = (s as { quantity?: number }).quantity ?? 1
+    return `${s.service.name}${qty > 1 ? ` ×${qty}` : ''} (₹${s.price})`
+  }).join(', ')
   return {
     customerName: booking.user.name,
     customerMobile: booking.user.mobile,

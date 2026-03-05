@@ -11,6 +11,7 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:seed": "node prisma/seed.js",
+    "db:clear-bookings": "npx tsx prisma/clear-bookings.ts",
     "deploy:db": "prisma db push && node prisma/seed.js"
   },
   "dependencies": {

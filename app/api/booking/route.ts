@@ -201,6 +201,15 @@ export async function POST(request: Request) {
     // Generate booking token
     const bookingToken = generateToken()
 
+    // Build BookingService rows: unique (bookingId, serviceId) with quantity and total price
+    const serviceCounts = new Map<string, number>()
+    serviceIds.forEach((id) => serviceCounts.set(id, (serviceCounts.get(id) ?? 0) + 1))
+
+    const bookingServicesCreate = Array.from(serviceCounts.entries()).map(([serviceId, quantity]) => {
+      const s = serviceMap.get(serviceId)!
+      return { serviceId: s.id, price: s.price * quantity, quantity }
+    })
+
     // Create booking
     const booking = await prisma.booking.create({
       data: {
@@ -213,10 +222,7 @@ export async function POST(request: Request) {
         notes: customerDetails.notes,
         token: bookingToken,
         services: {
-          create: serviceIds.map((serviceId) => {
-            const s = serviceMap.get(serviceId)!
-            return { serviceId: s.id, price: s.price }
-          }),
+          create: bookingServicesCreate,
         },
         payment: {
           create: {

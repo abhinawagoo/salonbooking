@@ -225,6 +225,7 @@ export default function ServicesPage() {
                   duration={service.duration}
                   imageUrl={service.imageUrl}
                   onAdd={() => handleServiceClick(service)}
+                  onCardClick={() => handleServiceClick(service)}
                   quantity={item?.quantity ?? 0}
                   onIncrease={() => handleIncreaseQuantity(service.id)}
                   onDecrease={() => handleDecreaseQuantity(service.id)}

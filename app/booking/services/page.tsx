@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { format, startOfDay, endOfDay, addDays } from 'date-fns'
 import ServiceCard from '@/components/ServiceCard'
 import ServiceModal from '@/components/ServiceModal'
 import { ChevronRight } from 'lucide-react'
+import { parseBusinessHours, getDayConfig, isWithinClosingTime } from '@/lib/slots'
 
 interface Service {
   id: string
@@ -50,6 +52,21 @@ export default function BookingServicesPage() {
   const [totalBump, setTotalBump] = useState(false)
   const [modalService, setModalService] = useState<Service | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showClosingTimePopup, setShowClosingTimePopup] = useState(false)
+  const [businessHoursJson, setBusinessHoursJson] = useState<string | null>(null)
+
+  const checkWouldExceedClosing = (servicesToCheck: ServiceWithQty[]): boolean => {
+    if (servicesToCheck.length === 0) return false
+    const dateTime = sessionStorage.getItem('bookingDateTime')
+    if (!dateTime || !businessHoursJson) return false
+    const dt = JSON.parse(dateTime) as { date: string; timeSlot: string }
+    const duration = servicesToCheck.reduce((sum, s) => sum + s.duration * (s.quantity ?? 1), 0)
+    const businessHours = parseBusinessHours(businessHoursJson)
+    const bookingDate = new Date(dt.date)
+    const dayConfig = getDayConfig(businessHours, bookingDate.getDay())
+    const closeTime = dayConfig.closeTime || '18:00'
+    return !isWithinClosingTime(dt.timeSlot, duration, closeTime)
+  }
 
   useEffect(() => {
     const location = sessionStorage.getItem('bookingLocation')
@@ -82,6 +99,17 @@ export default function BookingServicesPage() {
       })
       .catch(() => [])
       .finally(() => setLoading(false))
+
+    const loc = sessionStorage.getItem('bookingLocation')
+    if (loc) {
+      const { id } = JSON.parse(loc) as { id: string }
+      const startDate = format(startOfDay(new Date()), 'yyyy-MM-dd')
+      const endDate = format(endOfDay(addDays(new Date(), 30)), 'yyyy-MM-dd')
+      fetch(`/api/slots/availability?startDate=${startDate}&endDate=${endDate}&locationId=${encodeURIComponent(id)}`)
+        .then((r) => r.json())
+        .then((data) => setBusinessHoursJson(data.businessHours ?? null))
+        .catch(() => {})
+    }
   }, [router])
 
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId)
@@ -133,22 +161,34 @@ export default function BookingServicesPage() {
 
   const handleAddService = () => {
     if (!modalService) return
-    setSelectedServices((prev) => {
+    const nextServices: ServiceWithQty[] = (() => {
+      const prev = selectedServices
       const existing = prev.find((s) => s.id === modalService.id)
       if (existing) {
         return prev.map((s) => (s.id === modalService.id ? { ...s, quantity: s.quantity + 1 } : s))
       }
       return [...prev, { ...modalService, quantity: 1 }]
-    })
+    })()
+    if (checkWouldExceedClosing(nextServices)) {
+      setShowClosingTimePopup(true)
+      setModalService(null)
+      return
+    }
+    setSelectedServices(nextServices)
     setTotalBump(true)
     setTimeout(() => setTotalBump(false), 400)
     setModalService(null)
   }
 
   const handleIncreaseQuantity = (serviceId: string) => {
-    setSelectedServices((prev) =>
-      prev.map((s) => (s.id === serviceId ? { ...s, quantity: s.quantity + 1 } : s))
+    const nextServices = selectedServices.map((s) =>
+      s.id === serviceId ? { ...s, quantity: (s.quantity ?? 1) + 1 } : s
     )
+    if (checkWouldExceedClosing(nextServices)) {
+      setShowClosingTimePopup(true)
+      return
+    }
+    setSelectedServices(nextServices)
     setTotalBump(true)
     setTimeout(() => setTotalBump(false), 400)
   }
@@ -170,6 +210,10 @@ export default function BookingServicesPage() {
     const totalItems = selectedServices.reduce((sum, s) => sum + s.quantity, 0)
     if (totalItems === 0) {
       alert('Please add at least one service.')
+      return
+    }
+    if (checkWouldExceedClosing(selectedServices)) {
+      setShowClosingTimePopup(true)
       return
     }
     sessionStorage.setItem('selectedServices', JSON.stringify(selectedServices))
@@ -244,6 +288,7 @@ export default function BookingServicesPage() {
                   duration={service.duration}
                   imageUrl={service.imageUrl}
                   onAdd={() => handleServiceClick(service)}
+                  onCardClick={() => handleServiceClick(service)}
                   quantity={item?.quantity ?? 0}
                   onIncrease={() => handleIncreaseQuantity(service.id)}
                   onDecrease={() => handleDecreaseQuantity(service.id)}
@@ -319,6 +364,44 @@ export default function BookingServicesPage() {
                 className="w-full py-2.5 text-gray-600 hover:text-gray-900 font-medium"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Closing time popup */}
+      {showClosingTimePopup && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Please book another time</h3>
+            <p className="text-gray-600 text-sm mb-4">
+              Your selected appointment time and services would end <strong>after our salon closing time</strong>. We need to close on time to serve all our customers properly.
+            </p>
+            <p className="text-gray-500 text-xs mb-6">
+              Please go back and choose an earlier time slot so your appointment can be completed before we close.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => { setShowClosingTimePopup(false); router.push('/booking/date-time') }}
+                className="w-full py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800"
+              >
+                Change date & time
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowClosingTimePopup(false)}
+                className="w-full py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50"
+              >
+                Reduce services
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowClosingTimePopup(false)}
+                className="w-full py-2 text-gray-500 text-sm hover:text-gray-700"
+              >
+                Close
               </button>
             </div>
           </div>

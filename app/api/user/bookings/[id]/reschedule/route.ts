@@ -68,7 +68,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Cannot reschedule to a past date' }, { status: 400 })
     }
 
-    const totalDuration = booking.durationMinutes ?? (booking.services.reduce((s, bs) => s + (bs.service?.duration ?? 30), 0) || 30)
+    const totalDuration = booking.durationMinutes ?? (booking.services.reduce((s, bs) => s + (bs.service?.duration ?? 30) * (bs.quantity ?? 1), 0) || 30)
     const location = await prisma.location.findUnique({
       where: { id: targetLocationId },
       select: { businessHoursJson: true, closedDatesJson: true },

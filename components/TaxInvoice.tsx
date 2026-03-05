@@ -11,6 +11,7 @@ export interface TaxInvoiceService {
   id: string
   name: string
   price: number
+  quantity?: number
 }
 
 export interface TaxInvoiceData {
@@ -45,6 +46,13 @@ export default function TaxInvoice({ data }: { data: TaxInvoiceData }) {
     totalTax += s.price - taxable
   })
   totalTax = Math.round(totalTax * 100) / 100
+
+  const getQty = (s: TaxInvoiceService) => s.quantity ?? 1
+  const getUnitTaxable = (s: TaxInvoiceService) => {
+    const qty = getQty(s)
+    const taxable = Math.round((s.price / (1 + GST_RATE)) * 100) / 100
+    return qty > 0 ? taxable / qty : taxable
+  }
 
   return (
     <div
@@ -107,26 +115,28 @@ export default function TaxInvoice({ data }: { data: TaxInvoiceData }) {
       <div className="mb-4 sm:mb-5">
         {/* Mobile card layout - visible only on small screens */}
         <div className="md:hidden space-y-3">
-          {data.services.map((s, i) => {
-            const taxable = Math.round((s.price / (1 + GST_RATE)) * 100) / 100
-            const tax = Math.round((s.price - taxable) * 100) / 100
-            return (
-              <div
-                key={s.id}
-                className="rounded-lg border border-[#E5E0D8] p-3 bg-[#FAFAF9]/50"
-              >
-                <div className="flex justify-between items-start gap-2 mb-2">
-                  <span className="text-xs text-gray-500">#{i + 1}</span>
-                  <span className="text-sm font-semibold text-gray-900">{formatCurrency(s.price)}</span>
-                </div>
-                <p className="text-sm font-medium text-gray-800 break-words">{s.name}</p>
-                <div className="flex justify-between text-xs text-gray-600 mt-1">
-                  <span>Rate: {formatCurrency(taxable, 2)}</span>
-                  <span>Tax: {formatCurrency(tax, 2)}</span>
-                </div>
-              </div>
-            )
-          })}
+              {data.services.map((s, i) => {
+                const qty = getQty(s)
+                const taxable = Math.round((s.price / (1 + GST_RATE)) * 100) / 100
+                const tax = Math.round((s.price - taxable) * 100) / 100
+                const unitTaxable = qty > 0 ? taxable / qty : taxable
+                return (
+                  <div
+                    key={s.id}
+                    className="rounded-lg border border-[#E5E0D8] p-3 bg-[#FAFAF9]/50"
+                  >
+                    <div className="flex justify-between items-start gap-2 mb-2">
+                      <span className="text-xs text-gray-500">#{i + 1}</span>
+                      <span className="text-sm font-semibold text-gray-900">{formatCurrency(s.price)}</span>
+                    </div>
+                    <p className="text-sm font-medium text-gray-800 break-words">{s.name}</p>
+                    <div className="flex justify-between text-xs text-gray-600 mt-1">
+                      <span>Rate: {formatCurrency(unitTaxable, 2)}{qty > 1 ? ` × ${qty}` : ''}</span>
+                      <span>Tax: {formatCurrency(tax, 2)}</span>
+                    </div>
+                  </div>
+                )
+              })}
           <div className="rounded-lg border border-[#E5E0D8] p-3 bg-[#F3EEE6] font-semibold flex justify-between items-center">
             <span className="text-sm text-gray-900">SUBTOTAL</span>
             <span className="text-sm text-gray-900">{formatCurrency(data.totalAmount)}</span>
@@ -149,15 +159,17 @@ export default function TaxInvoice({ data }: { data: TaxInvoiceData }) {
             </thead>
             <tbody>
               {data.services.map((s, i) => {
+                const qty = getQty(s)
                 const taxable = Math.round((s.price / (1 + GST_RATE)) * 100) / 100
                 const tax = Math.round((s.price - taxable) * 100) / 100
+                const unitTaxable = getUnitTaxable(s)
                 return (
                   <tr key={s.id} style={{ borderBottom: '1px solid #E5E0D8' }}>
                     <td className="text-gray-600 align-middle" style={{ padding: 10 }}>{i + 1}</td>
                     <td className="text-gray-600 align-middle" style={{ padding: 10, wordBreak: 'break-word', maxWidth: 0 }}>{s.name}</td>
                     <td className="text-gray-600 align-middle" style={{ padding: 10 }}>{SAC_CODE}</td>
-                    <td className="text-gray-600 align-middle" style={{ padding: 10 }}>1 PCS</td>
-                    <td className="text-right text-gray-700 font-medium align-middle" style={{ padding: 10 }}>{formatCurrency(taxable, 2)}</td>
+                    <td className="text-gray-600 align-middle" style={{ padding: 10 }}>{qty} PCS</td>
+                    <td className="text-right text-gray-700 font-medium align-middle" style={{ padding: 10 }}>{formatCurrency(unitTaxable, 2)}</td>
                     <td className="text-right text-gray-700 font-medium align-middle" style={{ padding: 10 }}>{formatCurrency(tax, 2)}</td>
                     <td className="text-right font-semibold align-middle" style={{ padding: 10 }}>{formatCurrency(s.price)}</td>
                   </tr>

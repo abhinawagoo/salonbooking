@@ -31,6 +31,7 @@ interface Booking {
       name: string
     }
     price: number
+    quantity?: number
   }>
   payment: {
     paymentStatus: string
@@ -542,7 +543,7 @@ export default function AdminBookingsPage() {
                                     <div className="space-y-1">
                                       {booking.services.map((bs, idx) => (
                                         <div key={idx} className="flex justify-between text-sm">
-                                          <span className="text-gray-700">{bs.service.name}</span>
+                                          <span className="text-gray-700">{bs.service.name}{(bs.quantity ?? 1) > 1 ? ` ×${bs.quantity}` : ''}</span>
                                           <span className="text-gray-600">₹{bs.price}</span>
                                         </div>
                                       ))}

@@ -3,7 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { format, startOfDay, endOfDay, addDays, subMinutes, parseISO } from 'date-fns'
 import PaymentScreen from '@/components/PaymentScreen'
+import { parseBusinessHours, getDayConfig, isWithinClosingTime } from '@/lib/slots'
+
+const ARRIVAL_BUFFER_MINUTES = 10
 
 interface Service {
   id: string
@@ -13,20 +17,16 @@ interface Service {
   quantity?: number
 }
 
-const MAX_DURATION_MINUTES = 90 // 1.5 hours
-
 export default function PaymentPage() {
   const router = useRouter()
   const [services, setServices] = useState<Service[]>([])
   const [hasData, setHasData] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [totalBump, setTotalBump] = useState(false)
-  const [showDurationPopup, setShowDurationPopup] = useState(false)
-
-  const totalDurationMinutes = services.reduce(
-    (sum, s) => sum + s.duration * (s.quantity ?? 1),
-    0
-  )
+  const [showClosingTimePopup, setShowClosingTimePopup] = useState(false)
+  const [showArrivalPopup, setShowArrivalPopup] = useState(false)
+  const [selectedPaymentType, setSelectedPaymentType] = useState<'FULL' | 'ADVANCE' | null>(null)
+  const [businessHoursJson, setBusinessHoursJson] = useState<string | null>(null)
 
   useEffect(() => {
     const location = sessionStorage.getItem('bookingLocation')
@@ -34,29 +34,75 @@ export default function PaymentPage() {
     const customer = sessionStorage.getItem('customerDetails')
     const dateTime = sessionStorage.getItem('bookingDateTime')
     
-    if (!location || !servicesData || !customer || !dateTime) {
+    if (!location || !customer || !dateTime) {
       router.push('/booking/location')
       return
     }
     
-    const parsed = JSON.parse(servicesData) as (Service & { quantity?: number })[]
+    // Allow empty services - user may have deleted all; we'll show empty state
+    let parsed: (Service & { quantity?: number })[] = []
+    if (servicesData) {
+      try {
+        const p = JSON.parse(servicesData)
+        parsed = Array.isArray(p) ? p : []
+      } catch {
+        parsed = []
+      }
+    }
     const loaded = parsed.map((s) => ({ ...s, quantity: s.quantity ?? 1 }))
     setServices(loaded)
     setHasData(true)
-    const duration = loaded.reduce((sum, s) => sum + s.duration * (s.quantity ?? 1), 0)
-    if (duration > MAX_DURATION_MINUTES) setShowDurationPopup(true)
+
+    // Fetch business hours for closing-time validation
+    const loc = JSON.parse(location) as { id: string }
+    const dt = JSON.parse(dateTime) as { date: string; timeSlot: string }
+    const startDate = format(startOfDay(new Date()), 'yyyy-MM-dd')
+    const endDate = format(endOfDay(addDays(new Date(), 30)), 'yyyy-MM-dd')
+    fetch(`/api/slots/availability?startDate=${startDate}&endDate=${endDate}&locationId=${encodeURIComponent(loc.id)}`)
+      .then((r) => r.json())
+      .then((data) => setBusinessHoursJson(data.businessHours ?? null))
+      .catch(() => {})
   }, [router])
 
+  const wouldExceedClosing = (svc: Service[]): boolean => {
+    if (svc.length === 0 || !businessHoursJson) return false
+    const dateTime = sessionStorage.getItem('bookingDateTime')
+    if (!dateTime) return false
+    const dt = JSON.parse(dateTime) as { date: string; timeSlot: string }
+    const duration = svc.reduce((sum, s) => sum + s.duration * (s.quantity ?? 1), 0)
+    const businessHours = parseBusinessHours(businessHoursJson)
+    const dayConfig = getDayConfig(businessHours, new Date(dt.date).getDay())
+    const closeTime = dayConfig.closeTime || '18:00'
+    return !isWithinClosingTime(dt.timeSlot, duration, closeTime)
+  }
+
   const handleServicesChange = (updated: Service[]) => {
+    if (wouldExceedClosing(updated)) {
+      setShowClosingTimePopup(true)
+      return
+    }
     setServices(updated)
     sessionStorage.setItem('selectedServices', JSON.stringify(updated))
     setTotalBump(true)
     setTimeout(() => setTotalBump(false), 400)
-    const duration = updated.reduce((sum, s) => sum + s.duration * (s.quantity ?? 1), 0)
-    if (duration > MAX_DURATION_MINUTES) setShowDurationPopup(true)
   }
 
-  const handlePaymentInitiate = async (paymentType: 'FULL' | 'ADVANCE', paymentMethod?: string) => {
+  useEffect(() => {
+    if (services.length === 0 || !businessHoursJson) return
+    const dateTime = sessionStorage.getItem('bookingDateTime')
+    if (!dateTime) return
+    const dt = JSON.parse(dateTime) as { date: string; timeSlot: string }
+    const duration = services.reduce((sum, s) => sum + s.duration * (s.quantity ?? 1), 0)
+    const businessHours = parseBusinessHours(businessHoursJson)
+    const bookingDate = new Date(dt.date)
+    const dayConfig = getDayConfig(businessHours, bookingDate.getDay())
+    const closeTime = dayConfig.closeTime || '18:00'
+    if (!isWithinClosingTime(dt.timeSlot, duration, closeTime)) {
+      setShowClosingTimePopup(true)
+    }
+  }, [services, businessHoursJson])
+
+  const doPayment = async (paymentType: 'FULL' | 'ADVANCE') => {
     setIsProcessing(true)
     try {
       const customerDetails = JSON.parse(sessionStorage.getItem('customerDetails') || '{}')
@@ -136,11 +182,58 @@ export default function PaymentPage() {
     }
   }
 
+  const handlePaymentTypeSelect = (paymentType: 'FULL' | 'ADVANCE') => {
+    if (services.length === 0) return
+    if (wouldExceedClosing(services)) {
+      setShowClosingTimePopup(true)
+      return
+    }
+    setShowArrivalPopup(true)
+    setSelectedPaymentType(paymentType)
+  }
+
+  const handleArrivalConfirm = () => {
+    setShowArrivalPopup(false)
+  }
+
+  const handlePaymentInitiate = (paymentType: 'FULL' | 'ADVANCE', paymentMethod?: string) => {
+    if (services.length === 0) {
+      alert('Please add at least one service to proceed with payment.')
+      return
+    }
+    if (showClosingTimePopup) return
+    doPayment(paymentType)
+  }
+
   if (!hasData) {
     return null
   }
 
   const totalAmount = services.reduce((sum, s) => sum + s.price * (s.quantity ?? 1), 0)
+  const totalDurationMinutes = services.reduce((sum, s) => sum + s.duration * (s.quantity ?? 1), 0)
+
+  const formatDuration = (mins: number): string => {
+    if (mins < 60) return `${mins} min`
+    const hrs = Math.floor(mins / 60)
+    const remainder = mins % 60
+    return remainder > 0 ? `${hrs} hr${hrs !== 1 ? 's' : ''} ${remainder} min` : `${hrs} hr${hrs !== 1 ? 's' : ''}`
+  }
+
+  const getArrivalInfo = () => {
+    const dateTime = sessionStorage.getItem('bookingDateTime')
+    if (!dateTime) return { arrival: '—', appointment: '—' }
+    const dt = JSON.parse(dateTime) as { date: string; timeSlot: string }
+    const [h, m] = (dt.timeSlot || '09:00').split(':').map(Number)
+    const base = parseISO(dt.date)
+    const slotDate = new Date(base.getFullYear(), base.getMonth(), base.getDate(), h, m, 0)
+    const arrivalDate = subMinutes(slotDate, ARRIVAL_BUFFER_MINUTES)
+    return {
+      arrival: format(arrivalDate, 'EEE, MMM d \'at\' h:mm a'),
+      appointment: format(slotDate, 'EEE, MMM d \'at\' h:mm a'),
+    }
+  }
+
+  const arrivalInfo = getArrivalInfo()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
@@ -160,16 +253,27 @@ export default function PaymentPage() {
           </div>
         ) : (
           <>
-            {showDurationPopup && totalDurationMinutes > MAX_DURATION_MINUTES && (
+            {showArrivalPopup && selectedPaymentType && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
                 <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Important</h3>
-                  <p className="text-gray-600 text-sm mb-6">
-                    Your appointment duration is over 1.5 hours. Please be present at the right time for your booking. We recommend arriving <strong>10 minutes before</strong> your scheduled time.
-                  </p>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Please be present on time</h3>
+                  <div className="space-y-3 text-sm text-gray-600 mb-6">
+                    <p>
+                      <span className="font-medium text-gray-700">Arrive by:</span>{' '}
+                      {arrivalInfo.arrival}
+                    </p>
+                    <p>
+                      <span className="font-medium text-gray-700">Appointment time:</span>{' '}
+                      {arrivalInfo.appointment}
+                    </p>
+                    <p>
+                      <span className="font-medium text-gray-700">Total duration:</span>{' '}
+                      {formatDuration(totalDurationMinutes)}
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setShowDurationPopup(false)}
+                    onClick={handleArrivalConfirm}
                     className="w-full py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800"
                   >
                     OK
@@ -177,13 +281,66 @@ export default function PaymentPage() {
                 </div>
               </div>
             )}
+            {showClosingTimePopup && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Please book another time</h3>
+                  <p className="text-gray-600 text-sm mb-4">
+                    Your selected appointment time and services would end <strong>after our salon closing time</strong>. We need to close on time to serve all our customers properly.
+                  </p>
+                  <p className="text-gray-500 text-xs mb-6">
+                    Please go back and choose an earlier time slot so your appointment can be completed before we close.
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => router.push('/booking/date-time')}
+                      className="w-full py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800"
+                    >
+                      Change date & time
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowClosingTimePopup(false); router.push('/booking/services') }}
+                      className="w-full py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50"
+                    >
+                      Reduce services
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowClosingTimePopup(false)}
+                      className="w-full py-2 text-gray-500 text-sm hover:text-gray-700"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {services.length === 0 ? (
+              <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 p-6 sm:p-12 shadow-sm text-center">
+                <p className="text-gray-600 mb-4">You haven&apos;t added any services yet.</p>
+                <p className="text-sm text-gray-500 mb-6">Add at least one service to proceed with payment.</p>
+                <button
+                  type="button"
+                  onClick={() => router.push('/booking/services')}
+                  className="inline-flex items-center justify-center px-6 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800"
+                >
+                  Add services
+                </button>
+              </div>
+            ) : (
             <PaymentScreen
               services={services}
               totalAmount={totalAmount}
               onPaymentInitiate={handlePaymentInitiate}
               onServicesChange={handleServicesChange}
               totalBump={totalBump}
+              disabled={showClosingTimePopup}
+              selectedPaymentType={selectedPaymentType}
+              onPaymentTypeSelect={handlePaymentTypeSelect}
             />
+            )}
             <p className="mt-6 pt-4 border-t border-gray-200 text-center text-xs text-gray-500">
               <Link href="/terms" className="text-primary-600 hover:underline">Terms</Link>
               {' · '}

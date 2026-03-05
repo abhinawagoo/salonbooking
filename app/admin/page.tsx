@@ -23,6 +23,7 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingService, setEditingService] = useState<Service | null>(null)
+  const [detailService, setDetailService] = useState<Service | null>(null)
   const [showInactive, setShowInactive] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<Service | null>(null)
 
@@ -163,39 +164,47 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <div className="overflow-x-auto -mx-4 sm:mx-0">
-              <table className="w-full min-w-[520px]">
+              <table className="w-full min-w-[520px] table-fixed">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-4 sm:px-6 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[40%]">Service</th>
+                    <th className="px-4 sm:px-6 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[12%]">Price</th>
+                    <th className="px-4 sm:px-6 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[12%]">Duration</th>
+                    <th className="px-4 sm:px-6 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[14%]">Status</th>
+                    <th className="px-4 sm:px-6 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[22%]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {Array.isArray(services) && services.map((service) => (
-                    <tr key={service.id}>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
+                    <tr
+                      key={service.id}
+                      onClick={() => setDetailService(service)}
+                      className="cursor-pointer hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-4 sm:px-6 py-2.5 align-top">
+                        <div className="flex items-start gap-3 min-w-0">
                           {service.imageUrl ? (
-                            <img src={service.imageUrl} alt={service.name} className="w-12 h-12 rounded object-cover" />
+                            <img src={service.imageUrl} alt={service.name} className="w-12 h-12 rounded object-cover shrink-0" />
                           ) : (
-                            <div className="w-12 h-12 rounded bg-primary-100 flex items-center justify-center">
+                            <div className="w-12 h-12 rounded bg-primary-100 flex items-center justify-center shrink-0">
                               <ImageIcon className="text-primary-600" size={20} />
                             </div>
                           )}
-                          <div>
-                            <div className="font-medium text-gray-900">{service.name}</div>
-                            {service.description && (
-                              <div className="text-sm text-gray-500">{service.description}</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-gray-900 truncate">{service.name}</div>
+                            {service.description ? (
+                              <div className="text-sm text-gray-500 line-clamp-2 mt-0.5">{service.description}</div>
+                            ) : (
+                              <div className="text-sm text-gray-400 italic mt-0.5">No description</div>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-gray-900">₹{service.price}</td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-gray-500">{service.duration} min</td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                      <td className="px-4 sm:px-6 py-2.5 whitespace-nowrap text-gray-900 align-top">₹{service.price}</td>
+                      <td className="px-4 sm:px-6 py-2.5 whitespace-nowrap text-gray-500 align-top" onClick={(e) => e.stopPropagation()}>
+                        {service.duration} min
+                      </td>
+                      <td className="px-4 sm:px-6 py-2.5 whitespace-nowrap align-top" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => handleToggleActive(service.id, service.isActive)}
                           className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -207,20 +216,21 @@ export default function AdminDashboard() {
                           {service.isActive ? 'Active' : 'Inactive'}
                         </button>
                       </td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="px-4 sm:px-6 py-2.5 whitespace-nowrap text-right text-sm font-medium align-top" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => {
                               setEditingService(service)
                               setShowModal(true)
                             }}
-                            className="text-primary-600 hover:text-primary-900 p-2"
+                            className="text-primary-600 hover:text-primary-900 p-1.5 rounded hover:bg-primary-50"
+                            title="Edit"
                           >
                             <Edit size={18} />
                           </button>
                           <button
                             onClick={() => handleDeleteClick(service)}
-                            className="text-red-600 hover:text-red-900 p-2"
+                            className="text-red-600 hover:text-red-900 p-1.5 rounded hover:bg-red-50"
                             title="Delete or deactivate service"
                           >
                             <Trash2 size={18} />
@@ -286,6 +296,74 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {detailService && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={() => setDetailService(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-100 flex items-start gap-4 shrink-0">
+              {detailService.imageUrl ? (
+                <img src={detailService.imageUrl} alt={detailService.name} className="w-16 h-16 rounded-lg object-cover" />
+              ) : (
+                <div className="w-16 h-16 rounded-lg bg-primary-100 flex items-center justify-center">
+                  <ImageIcon className="text-primary-600" size={28} />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <h3 className="text-xl font-semibold text-gray-900">{detailService.name}</h3>
+                <p className="text-sm text-gray-500 mt-0.5">₹{detailService.price} · {detailService.duration} min</p>
+                <span className={`inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  detailService.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {detailService.isActive ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailService(null)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1 min-h-0">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Description</h4>
+              {detailService.description ? (
+                <p className="text-sm text-gray-600 whitespace-pre-wrap">{detailService.description}</p>
+              ) : (
+                <p className="text-sm text-gray-400 italic">No description</p>
+              )}
+            </div>
+            <div className="p-6 pt-0 flex gap-3 justify-end border-t border-gray-100 shrink-0">
+              <button
+                type="button"
+                onClick={() => setDetailService(null)}
+                className="px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 font-medium text-sm"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingService(detailService)
+                  setDetailService(null)
+                  setShowModal(true)
+                }}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium text-sm inline-flex items-center gap-1.5"
+              >
+                <Edit size={16} />
+                Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">

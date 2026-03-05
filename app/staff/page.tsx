@@ -32,6 +32,7 @@ interface Booking {
       name: string
     }
     price: number
+    quantity?: number
   }>
   payment: {
     paymentStatus: string
@@ -126,6 +127,7 @@ export default function StaffDashboard() {
         id: `s-${idx}`,
         name: bs.service.name,
         price: bs.price,
+        quantity: bs.quantity ?? 1,
       })),
       paymentStatus: booking.payment?.paymentStatus ?? 'PENDING',
       totalAmount,
@@ -308,7 +310,7 @@ export default function StaffDashboard() {
           <div className="space-y-1">
             {booking.services.map((bs, idx) => (
               <div key={idx} className="text-sm text-gray-600 flex justify-between">
-                <span>{bs.service.name}</span>
+                <span>{bs.service.name}{(bs.quantity ?? 1) > 1 ? ` ×${bs.quantity}` : ''}</span>
                 <span>₹{bs.price}</span>
               </div>
             ))}
