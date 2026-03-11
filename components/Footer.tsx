@@ -92,6 +92,21 @@ export default function Footer() {
               <Link href="/contact" className="text-gray-600 hover:text-gray-900">
                 Contact
               </Link>
+              <Link href="/best-ladies-salon-in-sasaram-bihar" className="text-gray-600 hover:text-gray-900">
+                Best Ladies Salon Sasaram
+              </Link>
+              <Link href="/bridal-makeup-sasaram" className="text-gray-600 hover:text-gray-900">
+                Bridal Makeup Sasaram
+              </Link>
+              <Link href="/facial-services-sasaram" className="text-gray-600 hover:text-gray-900">
+                Facial Services Sasaram
+              </Link>
+              <Link href="/hair-styling-sasaram" className="text-gray-600 hover:text-gray-900">
+                Hair Styling Sasaram
+              </Link>
+              <Link href="/beauty-parlour-sasaram" className="text-gray-600 hover:text-gray-900">
+                Beauty Parlour Sasaram
+              </Link>
               <Link href="/booking/location" className="text-gray-600 hover:text-gray-900">
                 Book Appointment
               </Link>
