@@ -7,7 +7,7 @@ const AUTO_ADVANCE_MS = 5000
 const SWIPE_THRESHOLD = 50
 
 interface HomeLandingBannerProps {
-  slides: { imageUrl: string }[]
+  slides: { imageUrl: string; alt?: string }[]
   onNext?: () => void
 }
 
@@ -79,9 +79,10 @@ export default function HomeLandingBanner({ slides, onNext }: HomeLandingBannerP
         >
           <img
             src={slide.imageUrl}
-            alt=""
+            alt={slide.alt || (i === 0 ? "Shahsharam Salon best salon in Sasaram Bihar" : "Professional haircut at Shahsharam Salon Sasaram")}
             className="absolute inset-0 w-full h-full object-cover rounded-[1.5rem] sm:rounded-[2rem]"
             draggable={false}
+            loading={i === 0 ? 'eager' : 'lazy'}
           />
         </div>
       ))}

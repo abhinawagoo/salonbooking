@@ -282,12 +282,13 @@ export default function AdminLocationsPage() {
       </div>
 
       {(modal === 'add' || modal === 'edit') && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm overflow-y-auto overscroll-contain">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl my-auto max-h-[90vh] flex flex-col min-h-0">
+            <h2 className="text-xl font-semibold text-gray-900 px-6 pt-6 pb-2 shrink-0">
               {modal === 'add' ? 'Add location' : 'Edit location'}
             </h2>
-            <form onSubmit={handleSave} className="space-y-4">
+            <form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 pb-4 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Location name *</label>
                 <input
@@ -459,7 +460,7 @@ export default function AdminLocationsPage() {
                     </span>
                   ))}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <input
                     type="date"
                     id="closedDateInput"
@@ -477,7 +478,8 @@ export default function AdminLocationsPage() {
                   </label>
                 </div>
               </div>
-              <div className="flex gap-3 justify-end pt-4">
+              </div>
+              <div className="flex gap-3 justify-end pt-4 px-6 pb-6 shrink-0 border-t border-gray-100 bg-white">
                 <button
                   type="button"
                   onClick={() => setModal(null)}

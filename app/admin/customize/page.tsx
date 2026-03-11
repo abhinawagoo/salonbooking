@@ -6,6 +6,7 @@ import { ArrowLeft, Upload, X, Save, Image as ImageIcon, MapPin, ChevronRight, V
 import { setUserRole } from '@/lib/auth'
 
 const MAX_IMAGES = 5
+const SHOW_HERO_BANNER_UPLOAD = false // Hidden until upload is fixed
 
 interface Settings {
   brandName: string
@@ -152,6 +153,7 @@ export default function AdminCustomizePage() {
   const removeUrl = async (index: number) => {
     const url = settings.galleryImageUrls[index]
     if (!url) return
+    const updatedUrls = settings.galleryImageUrls.filter((_, i) => i !== index)
     try {
       const res = await fetch('/api/admin/upload/delete', {
         method: 'POST',
@@ -163,9 +165,21 @@ export default function AdminCustomizePage() {
         alert(data?.error || 'Failed to delete from storage. Please try again.')
         return
       }
-      setSettings((s) => ({ ...s, galleryImageUrls: s.galleryImageUrls.filter((_, i) => i !== index) }))
+      setSettings((s) => ({ ...s, galleryImageUrls: updatedUrls }))
+      setSaving(true)
+      const saveRes = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...settings, galleryImageUrls: updatedUrls }),
+      })
+      const saveData = await saveRes.json().catch(() => ({}))
+      if (!saveRes.ok) {
+        alert(saveData?.error || saveData?.message || 'Deleted from storage but failed to save. Please try again.')
+      }
     } catch {
       alert('Failed to delete from storage. Please try again.')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -226,7 +240,8 @@ export default function AdminCustomizePage() {
           </div>
         </div>
 
-          {/* Hero Banner (single image, carousel slide on homepage) */}
+          {SHOW_HERO_BANNER_UPLOAD && (
+          /* Hero Banner (single image, carousel slide on homepage) - hidden until upload fixed */
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
               <ImageIcon size={20} />
@@ -288,6 +303,7 @@ export default function AdminCustomizePage() {
               )}
             </div>
           </div>
+          )}
 
           {/* Social Links */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">

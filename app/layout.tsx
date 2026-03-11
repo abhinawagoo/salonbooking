@@ -3,10 +3,27 @@ import "./globals.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ScrollToHash from "@/components/ScrollToHash";
+import { SEO } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Salon Booking System",
-  description: "Book your salon appointment with ease",
+  metadataBase: new URL(SEO.baseUrl),
+  title: {
+    default: SEO.title,
+    template: `%s | ${SEO.siteName}`,
+  },
+  description: SEO.description,
+  keywords: SEO.keywords,
+  openGraph: {
+    title: SEO.ogTitle,
+    description: SEO.ogDescription,
+    type: "website",
+    url: SEO.baseUrl,
+    images: [{ url: SEO.ogImageUrl, alt: SEO.ogTitle }],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export const viewport: Viewport = {
@@ -21,9 +38,32 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'HairSalon',
+    name: SEO.siteName,
+    image: SEO.ogImageUrl,
+    url: SEO.baseUrl,
+    telephone: SEO.telephone,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: SEO.address.locality,
+      addressRegion: SEO.address.region,
+      postalCode: SEO.address.postalCode,
+      addressCountry: SEO.address.country,
+    },
+    areaServed: SEO.areaServed,
+    priceRange: SEO.priceRange,
+    openingHours: SEO.openingHours,
+  }
+
   return (
     <html lang="en">
       <body className="antialiased flex flex-col min-h-screen">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
         <Navigation />
         <ScrollToHash />
         <main className="flex-1 bg-gray-50">{children}</main>

@@ -69,7 +69,7 @@ export default function HomeVideoCarousel({ videos }: HomeVideoCarouselProps) {
               playsInline
               autoPlay
               onEnded={handleEnded}
-              preload="auto"
+              preload={i === 0 ? 'auto' : 'metadata'}
             />
           </div>
         ))}
