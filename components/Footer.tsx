@@ -6,8 +6,8 @@ import { usePathname } from 'next/navigation'
 import { ChevronDown, Mail, Phone, ExternalLink } from 'lucide-react'
 
 const BRAND_NAME = 'Shahnaz Salon'
-const WEBSITE_URL = 'https://www.sasaramshahnazsalon.com'
-const SUPPORT_EMAIL = 'support@sasaramshahnazsalon.com'
+const WEBSITE_URL = 'https://www.shahnazsalonsasaram.com'
+const SUPPORT_EMAIL = 'support@shahnazsalonsasaram.com'
 
 export default function Footer() {
   const pathname = usePathname()

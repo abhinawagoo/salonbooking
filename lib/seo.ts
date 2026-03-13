@@ -3,7 +3,7 @@
  * Update these values to match your production domain and details.
  */
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.sasaramshahnazsalon.com'
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.shahnazsalonsasaram.com'
 
 export const SEO = {
   siteName: 'Shahsharam Salon',

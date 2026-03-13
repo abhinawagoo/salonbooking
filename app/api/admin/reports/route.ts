@@ -62,6 +62,7 @@ export async function GET(request: Request) {
     const where = {
       date: { gte: from, lte: to },
       status: { not: 'CANCELLED' as const },
+      payment: { paymentStatus: 'COMPLETED' as const },
       ...(locationId ? { locationId } : {}),
     }
 

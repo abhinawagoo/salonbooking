@@ -15,6 +15,7 @@ export async function GET(request: Request) {
     const whereToday = {
       date: { gte: todayStart, lte: todayEnd },
       status: { not: 'CANCELLED' as const },
+      payment: { paymentStatus: 'COMPLETED' as const },
       ...(locationId ? { locationId } : {}),
     }
 
@@ -47,6 +48,7 @@ export async function GET(request: Request) {
     const whereUpcoming = {
       date: { gt: todayEnd },
       status: { not: 'CANCELLED' as const },
+      payment: { paymentStatus: 'COMPLETED' as const },
       ...(locationId ? { locationId } : {}),
     }
 

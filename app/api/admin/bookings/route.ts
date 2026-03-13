@@ -9,7 +9,10 @@ export async function GET(request: Request) {
     const locationId = searchParams.get('locationId')
 
     const bookings = await prisma.booking.findMany({
-      where: locationId ? { locationId } : undefined,
+      where: {
+        ...(locationId ? { locationId } : {}),
+        payment: { paymentStatus: 'COMPLETED' },
+      },
       include: {
         location: {
           select: {

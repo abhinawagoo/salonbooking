@@ -4,7 +4,7 @@ import { Phone, Mail, MapPin } from 'lucide-react'
 import Link from 'next/link'
 import { SEO } from '@/lib/seo'
 
-const SUPPORT_EMAIL = 'support@sasaramshahnazsalon.com'
+const SUPPORT_EMAIL = 'support@shahnazsalonsasaram.com'
 
 export default function ContactClient() {
   return (

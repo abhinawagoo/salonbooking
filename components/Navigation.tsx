@@ -77,7 +77,7 @@ export default function Navigation() {
                 <span className="text-[#22c55e] drop-shadow-[0_0_12px_rgba(34,197,94,0.4)] group-hover:text-[#4ade80] transition-colors">Shahnaz</span>
                 <span className="text-[#f472b6] drop-shadow-[0_0_12px_rgba(244,114,182,0.4)] group-hover:text-[#f9a8d4] transition-colors"> Salon</span>
               </span>
-              <span className="text-[10px] sm:text-xs text-white/80 font-medium tracking-[0.2em] uppercase mt-1 pl-8 sm:pl-10">
+              <span className="text-[9px] sm:text-[10px] text-white/80 font-medium tracking-tight uppercase leading-none mt-1 text-right self-end">
                 Only for ladies
               </span>
             </Link>
