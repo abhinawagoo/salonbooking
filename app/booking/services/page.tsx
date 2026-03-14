@@ -220,12 +220,12 @@ export default function BookingServicesPage() {
     router.push('/booking/payment')
   }
 
+  const totalPrice = selectedServices.reduce((sum, s) => sum + s.price * s.quantity, 0)
+  const totalItems = selectedServices.reduce((sum, s) => sum + s.quantity, 0)
+
   if (!hasData) {
     return null
   }
-
-  const totalPrice = selectedServices.reduce((sum, s) => sum + s.price * s.quantity, 0)
-  const totalItems = selectedServices.reduce((sum, s) => sum + s.quantity, 0)
 
   return (
     <div className="min-h-screen bg-gray-50 pb-28 sm:pb-24">
@@ -303,7 +303,7 @@ export default function BookingServicesPage() {
       {/* Bottom bar: selected count + continue - always visible on mobile */}
       <div className="fixed left-0 right-0 bottom-0 bg-white border-t border-gray-200 shadow-lg z-50 p-3 sm:p-4 pb-[env(safe-area-inset-bottom)]">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 sm:gap-3 min-h-[52px]">
-          <p className={`text-gray-700 font-medium text-sm sm:text-base truncate min-w-0 transition-transform duration-300 ${totalBump ? 'scale-110' : 'scale-100'}`}>
+          <p className={`text-sm sm:text-base font-medium truncate min-w-0 transition-all duration-200 ${totalBump ? 'scale-105 text-green-600' : 'scale-100 text-gray-700'}`}>
             {totalItems} {totalItems === 1 ? 'item' : 'items'} · ₹{totalPrice.toLocaleString('en-IN')}
           </p>
           <button

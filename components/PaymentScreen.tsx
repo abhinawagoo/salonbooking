@@ -1,6 +1,6 @@
 'use client'
 
-import { CreditCard, Wallet, Smartphone, Shield, Plus, Minus, Trash2 } from 'lucide-react'
+import { CreditCard, Wallet, Shield, Plus, Minus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
 interface Service {
@@ -118,7 +118,7 @@ export default function PaymentScreen({ services, totalAmount, onPaymentInitiate
           })}
           <div className="flex justify-between items-center pt-3 border-t-2 border-gray-200">
             <p className="text-sm sm:text-base font-semibold text-gray-900">Total</p>
-            <p className={`text-base sm:text-xl font-semibold text-gray-900 transition-transform duration-300 ${totalBump ? 'scale-110' : 'scale-100'}`}>
+            <p className={`text-base sm:text-xl font-semibold transition-all duration-200 ${totalBump ? 'scale-105 text-green-600' : 'scale-100 text-gray-900'}`}>
               ₹{totalAmount.toLocaleString('en-IN')}
             </p>
           </div>

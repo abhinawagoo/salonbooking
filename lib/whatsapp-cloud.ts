@@ -32,6 +32,52 @@ function logWhatsAppError(status: number, msg: string, to: string) {
 }
 
 /**
+ * Send hello_world template (Meta sample, no params) – for testing when business verification pending.
+ * Set USE_WHATSAPP_HELLO_WORLD_TEST=true to use this instead of invoice/booking templates.
+ */
+export async function sendHelloWorldWhatsApp(mobile: string): Promise<{ ok: boolean; error?: string }> {
+  const { token, phoneId } = getConfig()
+  if (!token || !phoneId) {
+    console.warn('WhatsApp Cloud: WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID not set')
+    return { ok: false, error: 'Not configured' }
+  }
+
+  const to = toE164(mobile)
+  const url = `${GRAPH_API}/${phoneId}/messages`
+
+  const body = {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'template',
+    template: {
+      name: 'hello_world',
+      language: { code: 'en_US' },
+    },
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    })
+    const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+    if (!res.ok) {
+      const msg = data.error?.message || res.statusText
+      logWhatsAppError(res.status, msg, to)
+      return { ok: false, error: msg }
+    }
+    return { ok: true }
+  } catch (e) {
+    console.error('WhatsApp Cloud hello_world request failed:', e)
+    return { ok: false, error: String(e) }
+  }
+}
+
+/**
  * Send template message via WhatsApp Cloud API.
  * Template must be pre-approved in Meta Business Manager.
  * Body params: {{1}}, {{2}}, etc. Pass as array.
@@ -160,12 +206,16 @@ export async function sendOtpWhatsApp(mobile: string, otp: string): Promise<{ ok
  * Send invoice link to customer after payment (via WhatsApp Cloud API).
  * Uses template with body params: {{1}} customer name, {{2}} invoice link.
  * Create template in Meta: "Hi {{1}}, your booking payment is confirmed. View & download invoice: {{2}}"
+ * When USE_WHATSAPP_HELLO_WORLD_TEST=true, sends hello_world instead (for testing before business verification).
  */
 export async function sendInvoiceWhatsApp(
   mobile: string,
   customerName: string,
   invoiceLink: string
 ): Promise<{ ok: boolean; error?: string }> {
+  if (process.env.USE_WHATSAPP_HELLO_WORLD_TEST === 'true') {
+    return sendHelloWorldWhatsApp(mobile)
+  }
   const templateName = process.env.WHATSAPP_INVOICE_TEMPLATE_NAME || 'invoice_ready'
   return sendWhatsAppTemplate(mobile, templateName, [customerName, invoiceLink])
 }
@@ -183,6 +233,7 @@ function formatDateLong(dateStr: string): string {
  * Send booking confirmation to customer via WhatsApp Cloud API (direct, no BSP).
  * Template: Header "Your appointment is booked", Body "Hello {{1}}, Thank you for booking with Fashion Styles. Your appointment for {{2}} on {{3}} at {{4}} is confirmed."
  * Params: {{1}} name, {{2}} services, {{3}} date (December 31, 2025), {{4}} time (1:00 PM).
+ * When USE_WHATSAPP_HELLO_WORLD_TEST=true, sends hello_world instead (for testing before business verification).
  */
 export async function sendBookingConfirmationWhatsApp(
   mobile: string,
@@ -194,6 +245,9 @@ export async function sendBookingConfirmationWhatsApp(
   _totalAmount: string,
   _invoiceLink: string
 ): Promise<{ ok: boolean; error?: string }> {
+  if (process.env.USE_WHATSAPP_HELLO_WORLD_TEST === 'true') {
+    return sendHelloWorldWhatsApp(mobile)
+  }
   const templateName = process.env.WHATSAPP_BOOKING_TEMPLATE_NAME || 'booking_confirmation'
   const dateFormatted = formatDateLong(dateStr)
   const timeFormatted = formatTime12h(timeSlot)
