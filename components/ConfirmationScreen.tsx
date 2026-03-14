@@ -73,7 +73,7 @@ export default function ConfirmationScreen({
   const handleDownloadInvoice = async () => {
     setDownloading(true)
     try {
-      let settings: { brandName?: string; invoiceWebsite?: string; invoiceTerms?: string } = {}
+      let settings: { brandName?: string; invoiceWebsite?: string; invoiceGst?: string; invoiceTerms?: string } = {}
       try {
         settings = await fetch('/api/settings').then((r) => r.json())
       } catch {
