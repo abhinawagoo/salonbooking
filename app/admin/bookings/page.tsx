@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { format, isToday, isPast, isFuture, startOfDay, parseISO, subDays } from 'date-fns'
-import { CheckCircle, XCircle, Clock, Calendar, ChevronDown, ChevronUp, Phone, User, DollarSign, Banknote, Edit3, Download } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, Calendar, ChevronDown, ChevronUp, Phone, User, DollarSign, Banknote, Edit3, Download, Printer } from 'lucide-react'
 import { formatTime12h } from '@/lib/formatTime'
 import { setUserRole } from '@/lib/auth'
 
@@ -588,26 +588,37 @@ export default function AdminBookingsPage() {
                                         {booking.payment.paymentType === 'ADVANCE' ? 'Advance' : 'Full'} Payment
                                       </div>
                                     )}
-                                    {booking.payment && (
-                                      <div className="flex flex-wrap gap-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => openAddCashModal(booking)}
-                                          className="inline-flex items-center gap-1 px-2 py-1.5 bg-amber-100 text-amber-800 rounded-lg text-xs font-medium hover:bg-amber-200"
-                                        >
-                                          <Banknote size={14} />
-                                          Record cash
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => openEditPaymentModal(booking)}
-                                          className="inline-flex items-center gap-1 px-2 py-1.5 bg-gray-100 text-gray-800 rounded-lg text-xs font-medium hover:bg-gray-200"
-                                        >
-                                          <Edit3 size={14} />
-                                          Edit payment
-                                        </button>
-                                      </div>
-                                    )}
+                                    <div className="flex flex-wrap gap-2">
+                                      {booking.payment && (
+                                        <>
+                                          <button
+                                            type="button"
+                                            onClick={() => openAddCashModal(booking)}
+                                            className="inline-flex items-center gap-1 px-2 py-1.5 bg-amber-100 text-amber-800 rounded-lg text-xs font-medium hover:bg-amber-200"
+                                          >
+                                            <Banknote size={14} />
+                                            Record cash
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => openEditPaymentModal(booking)}
+                                            className="inline-flex items-center gap-1 px-2 py-1.5 bg-gray-100 text-gray-800 rounded-lg text-xs font-medium hover:bg-gray-200"
+                                          >
+                                            <Edit3 size={14} />
+                                            Edit payment
+                                          </button>
+                                        </>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => window.open(`/booking/invoice?token=${encodeURIComponent(booking.token)}`, '_blank')}
+                                        className="inline-flex items-center gap-1 px-2 py-1.5 bg-gray-100 text-gray-800 rounded-lg text-xs font-medium hover:bg-gray-200"
+                                        title="Print invoice"
+                                      >
+                                        <Printer size={14} />
+                                        Print invoice
+                                      </button>
+                                    </div>
                                   </div>
 
                                   {/* Status */}

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { format, isToday, isAfter } from 'date-fns'
 import Link from 'next/link'
 import { formatTime12h } from '@/lib/formatTime'
-import { CheckCircle, Clock, Phone, User, Banknote, Download, Copy, MapPin, Edit3 } from 'lucide-react'
+import { CheckCircle, Clock, Phone, User, Banknote, Printer, Copy, MapPin, Edit3 } from 'lucide-react'
 import { setUserRole } from '@/lib/auth'
 
 interface Location {
@@ -102,66 +102,6 @@ export default function StaffDashboard() {
     } catch (error) {
       console.error('Error updating booking:', error)
       alert('Failed to update booking status')
-    }
-  }
-
-  const handleDownloadInvoice = async (booking: Booking) => {
-    const totalAmount = booking.payment?.totalAmount ?? booking.services.reduce((s, bs) => s + bs.price, 0)
-    const amountPaid = booking.payment?.amountPaid ?? 0
-    const dueAmount = Math.max(0, totalAmount - amountPaid)
-    let settings: { brandName?: string; invoiceWebsite?: string; website?: string; invoiceTerms?: string } = {}
-    try {
-      settings = await fetch('/api/settings').then((r) => r.json())
-    } catch {
-      // use defaults
-    }
-    const payload = {
-      bookingToken: booking.token,
-      date: new Date(booking.date),
-      timeSlot: booking.timeSlot,
-      locationName: booking.location?.name ?? undefined,
-      locationAddress: booking.location?.address ?? undefined,
-      locationMobile: booking.location?.mobile ?? undefined,
-      locationImageUrl: booking.location?.imageUrl ?? undefined,
-      services: booking.services.map((bs, idx) => ({
-        id: `s-${idx}`,
-        name: bs.service.name,
-        price: bs.price,
-        quantity: bs.quantity ?? 1,
-      })),
-      paymentStatus: booking.payment?.paymentStatus ?? 'PENDING',
-      totalAmount,
-      amountPaid,
-      dueAmount,
-      onlineAmount: booking.payment?.onlineAmount ?? 0,
-      cashAmount: booking.payment?.cashAmount ?? 0,
-      customerName: booking.user?.name ?? undefined,
-      customerMobile: booking.user?.mobile ?? undefined,
-      brandName: settings.brandName,
-      website: settings.invoiceWebsite,
-      terms: settings.invoiceTerms ?? '',
-      invoiceNumber: booking.token,
-    }
-    try {
-      const res = await fetch('/api/invoice/pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Failed to generate PDF')
-      }
-      const blob = await res.blob()
-      const filename = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? `Tax-Invoice-${booking.token}.pdf`
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to download PDF')
     }
   }
 
@@ -372,12 +312,12 @@ export default function StaffDashboard() {
             )}
             <button
               type="button"
-              onClick={() => handleDownloadInvoice(booking)}
+              onClick={() => window.open(`/booking/invoice?token=${encodeURIComponent(booking.token)}`, '_blank')}
               className="inline-flex items-center gap-1 px-2 py-1.5 bg-gray-100 text-gray-800 rounded-lg text-xs font-medium hover:bg-gray-200"
-              title="Download invoice"
+              title="Print invoice"
             >
-              <Download size={14} />
-              Invoice
+              <Printer size={14} />
+              Print invoice
             </button>
           </div>
         </div>
