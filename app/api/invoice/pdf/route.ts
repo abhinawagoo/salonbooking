@@ -63,7 +63,7 @@ export async function POST(request: Request) {
         customerMobile: booking.user?.mobile ?? undefined,
         brandName: site?.brandName ?? undefined,
         website: site?.invoiceWebsite ?? 'shahnazsalonsasaram.com',
-        gstNumber: site?.invoiceGst ?? '10DHAPR1747H1ZM',
+        gstNumber: site?.invoiceGst ?? undefined,
         terms: site?.invoiceTerms ?? undefined,
         invoiceNumber: billNo,
       }

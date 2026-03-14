@@ -66,7 +66,7 @@ function InvoicePageContent() {
         setInvoiceSettings({
           brandName: settings.brandName,
           website: settings.invoiceWebsite ?? 'shahnazsalonsasaram.com',
-          gstNumber: settings.invoiceGst ?? '10DHAPR1747H1ZM',
+          gstNumber: settings.invoiceGst ?? undefined,
           terms: settings.invoiceTerms ?? '',
         })
       })
@@ -162,7 +162,7 @@ function InvoicePageContent() {
             phone: bookingData.locationMobile ?? undefined,
             address: bookingData.locationAddress ?? undefined,
             website: invoiceSettings.website ?? 'shahnazsalonsasaram.com',
-            gstNumber: invoiceSettings.gstNumber ?? '10DHAPR1747H1ZM',
+            gstNumber: invoiceSettings.gstNumber ?? undefined,
             logoUrl: bookingData.locationImageUrl ?? undefined,
             invoiceNo: bookingData.billNo ?? bookingData.token,
             invoiceDate: format(dateObj, 'dd/MM/yyyy'),

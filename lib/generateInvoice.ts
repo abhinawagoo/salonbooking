@@ -159,7 +159,7 @@ export function generateInvoicePDF(data: InvoiceData) {
     lineY += 6
   }
   if (data.gstNumber) {
-    doc.text(`Goods and Services Tax Identification Number: ${data.gstNumber}`, leftX, lineY)
+    doc.text(`GST: ${data.gstNumber}`, leftX, lineY)
     lineY += 6
   }
 

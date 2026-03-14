@@ -64,7 +64,7 @@ export default function ConfirmationScreen({
       .then((s) => setInvoiceSettings({
         brandName: s.brandName,
         website: s.invoiceWebsite ?? s.website ?? 'shahnazsalonsasaram.com',
-        gstNumber: s.invoiceGst ?? '10DHAPR1747H1ZM',
+        gstNumber: s.invoiceGst ?? undefined,
         terms: s.invoiceTerms ?? '',
       }))
       .catch(() => {})
@@ -98,7 +98,7 @@ export default function ConfirmationScreen({
         locationImageUrl,
         brandName: settings.brandName,
         website: settings.invoiceWebsite ?? 'shahnazsalonsasaram.com',
-        gstNumber: settings.invoiceGst ?? '10DHAPR1747H1ZM',
+        gstNumber: settings.invoiceGst ?? undefined,
         terms: settings.invoiceTerms ?? '',
         invoiceNumber: billNo ?? bookingToken,
       }
@@ -185,7 +185,7 @@ export default function ConfirmationScreen({
           phone: locationMobile ?? undefined,
           address: locationAddress ?? undefined,
           website: invoiceSettings.website ?? 'shahnazsalonsasaram.com',
-          gstNumber: invoiceSettings.gstNumber ?? '10DHAPR1747H1ZM',
+          gstNumber: invoiceSettings.gstNumber ?? undefined,
           logoUrl: locationImageUrl ?? undefined,
           invoiceNo: billNo ?? bookingToken,
           invoiceDate: format(date instanceof Date ? date : new Date(date as string), 'dd/MM/yyyy'),

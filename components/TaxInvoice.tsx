@@ -89,7 +89,7 @@ export default function TaxInvoice({ data }: { data: TaxInvoiceData }) {
             )}
             {data.gstNumber && (
               <p className="text-xs sm:text-sm text-gray-600 mt-0.5">
-                Goods and Services Tax Identification Number: {data.gstNumber}
+                GST: {data.gstNumber}
               </p>
             )}
           </div>
