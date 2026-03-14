@@ -58,8 +58,10 @@ export default function ProfileBookingsPage() {
   }
 
   useEffect(() => {
-    if (AUTH_DISABLED_FOR_NOW || process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true') {
-      router.replace('/')
+    const authDisabled = AUTH_DISABLED_FOR_NOW || process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true'
+    if (authDisabled) {
+      setBookings([])
+      setLoading(false)
       return
     }
     fetch('/api/user/bookings')

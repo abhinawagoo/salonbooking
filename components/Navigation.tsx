@@ -97,9 +97,17 @@ export default function Navigation() {
                 <span>Book<br className="sm:hidden" /> Appointment</span>
               </Link>
 
-              {/* Profile or Login – rightmost, hidden when auth disabled */}
+              {/* Profile or Login – rightmost */}
               <div className="relative" ref={profileRef}>
-                {!authDisabled && loggedInUser ? (
+                {authDisabled ? (
+                  <Link
+                    href="/profile"
+                    className="flex items-center justify-center w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all duration-200 touch-manipulation"
+                    aria-label="Profile"
+                  >
+                    <User size={20} />
+                  </Link>
+                ) : loggedInUser ? (
                   <>
                     <button
                       type="button"

@@ -17,10 +17,12 @@ export default function ProfilePage() {
   const router = useRouter()
   const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const authDisabled = AUTH_DISABLED_FOR_NOW || process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true'
 
   useEffect(() => {
-    if (AUTH_DISABLED_FOR_NOW || process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true') {
-      router.replace('/')
+    if (authDisabled) {
+      setUser({ id: '', name: 'Guest', mobile: '', role: 'CUSTOMER' })
+      setLoading(false)
       return
     }
     fetch('/api/user/me')
@@ -91,13 +93,17 @@ export default function ProfilePage() {
               </div>
             </div>
             <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
-                <Phone size={20} className="text-gray-500 shrink-0" />
-                <div>
-                  <p className="text-xs text-gray-500">WhatsApp Number (your unique identity)</p>
-                  <p className="font-medium text-gray-900">+91 {user.mobile}</p>
+              {user.mobile ? (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                  <Phone size={20} className="text-gray-500 shrink-0" />
+                  <div>
+                    <p className="text-xs text-gray-500">WhatsApp Number (your unique identity)</p>
+                    <p className="font-medium text-gray-900">+91 {user.mobile}</p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <p className="text-sm text-gray-500">Use your mobile number when booking to track your appointments.</p>
+              )}
             </div>
           </div>
         </div>
@@ -117,15 +123,17 @@ export default function ProfilePage() {
           </Link>
         </div>
 
-        {/* Logout */}
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl border-2 border-red-200 text-red-700 font-medium hover:bg-red-50 transition-colors"
-        >
-          <LogOut size={20} />
-          Logout
-        </button>
+        {/* Logout – hidden when auth disabled */}
+        {!authDisabled && (
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl border-2 border-red-200 text-red-700 font-medium hover:bg-red-50 transition-colors"
+          >
+            <LogOut size={20} />
+            Logout
+          </button>
+        )}
       </div>
     </div>
   )

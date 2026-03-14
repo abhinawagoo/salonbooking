@@ -3,18 +3,19 @@ import { prisma } from '@/lib/prisma'
 import { getPhonePeOrderStatus } from '@/lib/phonepe'
 import { sendInvoiceWhatsApp } from '@/lib/whatsapp-cloud'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')
 
 // PhonePe PG v2: user is redirected here after payment. We use Order Status API to confirm.
+// Use APP_URL for redirects so users always land on the configured domain (not Vercel preview URL).
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const bookingId = searchParams.get('bookingId')
 
   if (!bookingId) {
-    return NextResponse.redirect(new URL('/', request.url))
+    return NextResponse.redirect(`${APP_URL}/`)
   }
 
-  const base = new URL(request.url).origin
+  const base = APP_URL
 
   try {
     const status = await getPhonePeOrderStatus(bookingId)
