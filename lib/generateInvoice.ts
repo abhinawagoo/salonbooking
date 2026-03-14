@@ -33,6 +33,7 @@ export interface InvoiceData {
   customerMobile?: string
   brandName?: string
   website?: string
+  gstNumber?: string
   terms?: string
   invoiceNumber?: string
 }
@@ -155,6 +156,10 @@ export function generateInvoicePDF(data: InvoiceData) {
   }
   if (data.website) {
     doc.text(data.website, leftX, lineY)
+    lineY += 6
+  }
+  if (data.gstNumber) {
+    doc.text(`Goods and Services Tax Identification Number: ${data.gstNumber}`, leftX, lineY)
     lineY += 6
   }
 

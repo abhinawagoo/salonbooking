@@ -15,8 +15,7 @@ interface Settings {
   heroVideoUrls: string[]
   galleryImageUrls: string[]
   invoiceWebsite: string
-  invoiceUpiId: string
-  invoiceTerms: string
+  invoiceGst: string
   facebookUrl: string
   instagramUrl: string
 }
@@ -29,8 +28,7 @@ export default function AdminCustomizePage() {
     heroVideoUrls: [],
     galleryImageUrls: [],
     invoiceWebsite: '',
-    invoiceUpiId: '',
-    invoiceTerms: '',
+    invoiceGst: '',
     facebookUrl: '',
     instagramUrl: '',
   })
@@ -55,8 +53,7 @@ export default function AdminCustomizePage() {
         heroVideoUrls: Array.isArray(data.heroVideoUrls) ? data.heroVideoUrls : [],
         galleryImageUrls: Array.isArray(data.galleryImageUrls) ? data.galleryImageUrls : [],
         invoiceWebsite: data.invoiceWebsite ?? '',
-        invoiceUpiId: data.invoiceUpiId ?? '',
-        invoiceTerms: data.invoiceTerms ?? '',
+        invoiceGst: data.invoiceGst ?? '',
         facebookUrl: data.facebookUrl ?? '',
         instagramUrl: data.instagramUrl ?? '',
       })
@@ -237,12 +234,40 @@ export default function AdminCustomizePage() {
                   placeholder="e.g. Services or Menu"
                 />
               </div>
+            </div>
           </div>
-        </div>
+
+          {/* Invoice / Bill details - shown on tax invoice */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Invoice / Bill Details</h2>
+            <p className="text-sm text-gray-500 mb-4">Website and GST number shown on tax invoices and bills.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                <input
+                  type="text"
+                  value={settings.invoiceWebsite}
+                  onChange={(e) => setSettings((s) => ({ ...s, invoiceWebsite: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="e.g. shahnazsalonsasaram.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">GSTIN (GST Number)</label>
+                <input
+                  type="text"
+                  value={settings.invoiceGst}
+                  onChange={(e) => setSettings((s) => ({ ...s, invoiceGst: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="e.g. 10DHAPR1747H1ZM"
+                />
+              </div>
+            </div>
+          </div>
 
           {SHOW_HERO_BANNER_UPLOAD && (
-          /* Hero Banner (single image, carousel slide on homepage) - hidden until upload fixed */
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+            {/* Hero Banner (single image, carousel slide on homepage) - hidden until upload fixed */}
             <h2 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
               <ImageIcon size={20} />
               Hero Banner

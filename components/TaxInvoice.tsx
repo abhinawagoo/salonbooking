@@ -19,6 +19,7 @@ export interface TaxInvoiceData {
   phone?: string
   address?: string
   website?: string
+  gstNumber?: string
   logoUrl?: string
   invoiceNo: string
   invoiceDate: string
@@ -84,6 +85,11 @@ export default function TaxInvoice({ data }: { data: TaxInvoiceData }) {
                 >
                   {data.website.replace(/^https?:\/\//, '')}
                 </a>
+              </p>
+            )}
+            {data.gstNumber && (
+              <p className="text-xs sm:text-sm text-gray-600 mt-0.5">
+                Goods and Services Tax Identification Number: {data.gstNumber}
               </p>
             )}
           </div>

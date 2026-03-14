@@ -12,7 +12,7 @@ function parseJsonArray(str: string | null): string[] {
   }
 }
 
-type SettingsRow = { brandName: string; menuLabel: string; heroVideoUrls: string | null; galleryImageUrls: string | null; invoiceWebsite: string | null; invoiceUpiId: string | null; invoiceTerms: string | null; facebookUrl: string | null; instagramUrl: string | null }
+type SettingsRow = { brandName: string; menuLabel: string; heroVideoUrls: string | null; galleryImageUrls: string | null; invoiceWebsite: string | null; invoiceGst: string | null; invoiceUpiId: string | null; invoiceTerms: string | null; facebookUrl: string | null; instagramUrl: string | null }
 
 const defaultSettings = {
   brandName: 'Salon',
@@ -21,6 +21,7 @@ const defaultSettings = {
   heroVideoUrls: [] as string[],
   galleryImageUrls: [] as string[],
   invoiceWebsite: null as string | null,
+  invoiceGst: null as string | null,
   invoiceUpiId: null as string | null,
   invoiceTerms: null as string | null,
   facebookUrl: null as string | null,
@@ -33,7 +34,7 @@ export async function GET() {
     try {
       rows = await prisma.$queryRaw<SettingsRow[]>`
         SELECT "brandName", "menuLabel", "heroVideoUrls", "galleryImageUrls",
-          "invoiceWebsite", "invoiceUpiId", "invoiceTerms",
+          "invoiceWebsite", "invoiceGst", "invoiceUpiId", "invoiceTerms",
           "facebookUrl", "instagramUrl"
         FROM "SiteCustomization" WHERE id = 1 LIMIT 1
       `
@@ -53,6 +54,7 @@ export async function GET() {
           heroVideoUrls: parseJsonArray(s.heroVideoUrls),
           galleryImageUrls: parseJsonArray(s.galleryImageUrls),
           invoiceWebsite: s.invoiceWebsite ?? null,
+          invoiceGst: (s as { invoiceGst?: string | null }).invoiceGst ?? null,
           invoiceUpiId: s.invoiceUpiId ?? null,
           invoiceTerms: s.invoiceTerms ?? null,
           facebookUrl: null,
@@ -75,6 +77,7 @@ export async function GET() {
       heroVideoUrls: parseJsonArray(s.heroVideoUrls),
       galleryImageUrls: parseJsonArray(s.galleryImageUrls),
       invoiceWebsite: s.invoiceWebsite ?? null,
+      invoiceGst: s.invoiceGst ?? null,
       invoiceUpiId: s.invoiceUpiId ?? null,
       invoiceTerms: s.invoiceTerms ?? null,
       facebookUrl: s.facebookUrl ?? null,
@@ -89,7 +92,7 @@ export async function GET() {
 async function updateSettings(request: Request) {
   try {
     const body = await request.json()
-    const { brandName, menuLabel, heroVideoUrls, galleryImageUrls, invoiceWebsite, invoiceUpiId, invoiceTerms, facebookUrl, instagramUrl } = body
+    const { brandName, menuLabel, heroVideoUrls, galleryImageUrls, invoiceWebsite, invoiceGst, invoiceUpiId, invoiceTerms, facebookUrl, instagramUrl } = body
 
     const heroArr = Array.isArray(heroVideoUrls) ? heroVideoUrls.slice(0, 5) : []
     const galleryArr = Array.isArray(galleryImageUrls)
@@ -123,6 +126,7 @@ async function updateSettings(request: Request) {
     const brand = (brandName !== undefined ? String(brandName).trim() : null) || 'Salon'
     const menu = (menuLabel !== undefined ? String(menuLabel).trim() : null) || 'Services'
     const invWeb = invoiceWebsite !== undefined ? String(invoiceWebsite).trim() || null : undefined
+    const invGst = invoiceGst !== undefined ? String(invoiceGst).trim() || null : undefined
     const invUpi = invoiceUpiId !== undefined ? String(invoiceUpiId).trim() || null : undefined
     const invTerms = invoiceTerms !== undefined ? String(invoiceTerms).trim() || null : undefined
     const fbUrl = facebookUrl !== undefined ? String(facebookUrl).trim() || null : undefined
@@ -137,6 +141,7 @@ async function updateSettings(request: Request) {
         heroVideoUrls: JSON.stringify(heroArr),
         galleryImageUrls: JSON.stringify(galleryArr),
         invoiceWebsite: invWeb ?? null,
+        invoiceGst: invGst ?? null,
         invoiceUpiId: invUpi ?? null,
         invoiceTerms: invTerms ?? null,
         facebookUrl: fbUrl ?? null,
@@ -148,6 +153,7 @@ async function updateSettings(request: Request) {
         heroVideoUrls: JSON.stringify(heroArr),
         galleryImageUrls: JSON.stringify(galleryArr),
         ...(invWeb !== undefined && { invoiceWebsite: invWeb }),
+        ...(invGst !== undefined && { invoiceGst: invGst }),
         ...(invUpi !== undefined && { invoiceUpiId: invUpi }),
         ...(invTerms !== undefined && { invoiceTerms: invTerms }),
         ...(fbUrl !== undefined && { facebookUrl: fbUrl }),
@@ -161,6 +167,7 @@ async function updateSettings(request: Request) {
       heroVideoUrls: s.heroVideoUrls,
       galleryImageUrls: s.galleryImageUrls,
       invoiceWebsite: s.invoiceWebsite,
+      invoiceGst: s.invoiceGst,
       invoiceUpiId: s.invoiceUpiId,
       invoiceTerms: s.invoiceTerms,
       facebookUrl: s.facebookUrl,
@@ -174,6 +181,7 @@ async function updateSettings(request: Request) {
       heroVideoUrls: parseJsonArray(r?.heroVideoUrls ?? null),
       galleryImageUrls: parseJsonArray(r?.galleryImageUrls ?? null),
       invoiceWebsite: r?.invoiceWebsite ?? null,
+      invoiceGst: r?.invoiceGst ?? null,
       invoiceUpiId: r?.invoiceUpiId ?? null,
       invoiceTerms: r?.invoiceTerms ?? null,
       facebookUrl: r?.facebookUrl ?? null,

@@ -55,7 +55,7 @@ export default function ConfirmationScreen({
   locationImageUrl,
 }: ConfirmationScreenProps) {
   const router = useRouter()
-  const [invoiceSettings, setInvoiceSettings] = useState<{ brandName?: string; website?: string; terms?: string }>({})
+  const [invoiceSettings, setInvoiceSettings] = useState<{ brandName?: string; website?: string; gstNumber?: string; terms?: string }>({})
   const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
@@ -63,7 +63,8 @@ export default function ConfirmationScreen({
       .then((r) => r.json())
       .then((s) => setInvoiceSettings({
         brandName: s.brandName,
-        website: s.invoiceWebsite ?? s.website,
+        website: s.invoiceWebsite ?? s.website ?? 'shahnazsalonsasaram.com',
+        gstNumber: s.invoiceGst ?? '10DHAPR1747H1ZM',
         terms: s.invoiceTerms ?? '',
       }))
       .catch(() => {})
@@ -96,7 +97,8 @@ export default function ConfirmationScreen({
         locationMobile,
         locationImageUrl,
         brandName: settings.brandName,
-        website: settings.invoiceWebsite,
+        website: settings.invoiceWebsite ?? 'shahnazsalonsasaram.com',
+        gstNumber: settings.invoiceGst ?? '10DHAPR1747H1ZM',
         terms: settings.invoiceTerms ?? '',
         invoiceNumber: billNo ?? bookingToken,
       }
@@ -182,7 +184,8 @@ export default function ConfirmationScreen({
           salonName: (invoiceSettings.brandName || locationName || 'SALON').toUpperCase(),
           phone: locationMobile ?? undefined,
           address: locationAddress ?? undefined,
-          website: invoiceSettings.website ?? undefined,
+          website: invoiceSettings.website ?? 'shahnazsalonsasaram.com',
+          gstNumber: invoiceSettings.gstNumber ?? '10DHAPR1747H1ZM',
           logoUrl: locationImageUrl ?? undefined,
           invoiceNo: billNo ?? bookingToken,
           invoiceDate: format(date instanceof Date ? date : new Date(date as string), 'dd/MM/yyyy'),

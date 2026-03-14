@@ -36,7 +36,7 @@ function InvoicePageContent() {
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [invoiceSettings, setInvoiceSettings] = useState<{ brandName?: string; website?: string; terms?: string }>({})
+  const [invoiceSettings, setInvoiceSettings] = useState<{ brandName?: string; website?: string; gstNumber?: string; terms?: string }>({})
   const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
@@ -65,7 +65,8 @@ function InvoicePageContent() {
         })
         setInvoiceSettings({
           brandName: settings.brandName,
-          website: settings.invoiceWebsite,
+          website: settings.invoiceWebsite ?? 'shahnazsalonsasaram.com',
+          gstNumber: settings.invoiceGst ?? '10DHAPR1747H1ZM',
           terms: settings.invoiceTerms ?? '',
         })
       })
@@ -160,7 +161,8 @@ function InvoicePageContent() {
             salonName: (invoiceSettings.brandName || bookingData.locationName || 'SALON').toUpperCase(),
             phone: bookingData.locationMobile ?? undefined,
             address: bookingData.locationAddress ?? undefined,
-            website: invoiceSettings.website ?? undefined,
+            website: invoiceSettings.website ?? 'shahnazsalonsasaram.com',
+            gstNumber: invoiceSettings.gstNumber ?? '10DHAPR1747H1ZM',
             logoUrl: bookingData.locationImageUrl ?? undefined,
             invoiceNo: bookingData.billNo ?? bookingData.token,
             invoiceDate: format(dateObj, 'dd/MM/yyyy'),

@@ -177,7 +177,8 @@ model SiteCustomization {
   heroBannerImageUrl  String?  // Single image URL for hero banner (30% height); replaces video
   heroVideoUrls       String?  // JSON array (legacy / unused when heroBannerImageUrl set)
   galleryImageUrls    String?  // JSON array of URL strings (max 5)
-  invoiceWebsite      String?  // Website shown on tax invoice
+  invoiceWebsite      String?  // Website shown on tax invoice (e.g. shahnazsalonsasaram.com)
+  invoiceGst          String?  // GSTIN - Goods and Services Tax Identification Number
   invoiceUpiId        String?  // UPI ID for payment QR on invoice
   invoiceTerms        String?  // Terms & conditions on invoice (e.g. "Goods once sold will not be taken back")
   facebookUrl         String?  // Facebook profile/page URL for footer
