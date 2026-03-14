@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, Edit, Trash2, Image as ImageIcon, Calendar, BarChart3, Settings, Layers } from 'lucide-react'
+import { Plus, Edit, Trash2, Image as ImageIcon, Calendar, Settings, Layers } from 'lucide-react'
 import { setUserRole } from '@/lib/auth'
 
 interface Service {
@@ -118,13 +118,6 @@ export default function AdminDashboard() {
               >
                 <Calendar size={18} />
                 Bookings
-              </Link>
-              <Link
-                href="/admin/reports"
-                className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium transition-colors min-h-[44px]"
-              >
-                <BarChart3 size={18} />
-                Reports
               </Link>
               <button
                 type="button"
@@ -279,18 +272,6 @@ export default function AdminDashboard() {
               <div className="min-w-0">
                 <h3 className="font-semibold text-gray-900 text-sm sm:text-base">View Bookings</h3>
                 <p className="text-xs sm:text-sm text-gray-600 truncate">Day by day, filter by location</p>
-              </div>
-            </Link>
-            <Link
-              href="/admin/reports"
-              className="p-4 sm:p-5 border-2 border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-all flex items-center gap-3 sm:gap-4 min-h-[72px]"
-            >
-              <div className="bg-primary-100 rounded-full p-2.5 sm:p-3 shrink-0">
-                <BarChart3 className="text-primary-600" size={22} />
-              </div>
-              <div className="min-w-0">
-                <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Sales Reports</h3>
-                <p className="text-xs sm:text-sm text-gray-600 truncate">Day, week, month, year by location</p>
               </div>
             </Link>
           </div>

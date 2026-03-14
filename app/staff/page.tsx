@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { format, isToday, isAfter } from 'date-fns'
 import Link from 'next/link'
 import { formatTime12h } from '@/lib/formatTime'
-import { CheckCircle, Clock, Phone, User, Banknote, Download, Copy, MapPin, BarChart3, Edit3 } from 'lucide-react'
+import { CheckCircle, Clock, Phone, User, Banknote, Download, Copy, MapPin, Edit3 } from 'lucide-react'
 import { setUserRole } from '@/lib/auth'
 
 interface Location {
@@ -407,13 +407,6 @@ export default function StaffDashboard() {
                 ))}
               </select>
             </div>
-            <Link
-              href="/admin/reports"
-              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 flex items-center gap-2 text-sm"
-            >
-              <BarChart3 size={18} />
-              Reports
-            </Link>
           </div>
         </div>
       </div>
