@@ -15,36 +15,28 @@ function ConfirmationPageContent() {
   const searchParams = useSearchParams()
   const [bookingData, setBookingData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
-  // Clear all session storage and prevent back navigation
+  // Clear all session storage and prevent back navigation to booking flow
   useEffect(() => {
-    // Clear all booking-related session storage immediately
-    sessionStorage.removeItem('selectedServices')
-    sessionStorage.removeItem('customerDetails')
-    sessionStorage.removeItem('bookingDateTime')
-
-    // Prevent browser back button - redirect to home if user tries to go back
-    const handlePopState = (event: PopStateEvent) => {
-      event.preventDefault()
-      window.history.pushState(null, '', window.location.href)
-      router.replace('/')
-    }
-    
-    // Push current state to prevent back navigation
-    window.history.pushState(null, '', window.location.href)
-    window.addEventListener('popstate', handlePopState)
-
-    // Also handle browser back button via beforeunload
-    const handleBeforeUnload = () => {
+    const clearBookingData = () => {
       sessionStorage.removeItem('selectedServices')
       sessionStorage.removeItem('customerDetails')
       sessionStorage.removeItem('bookingDateTime')
+      sessionStorage.removeItem('bookingLocation')
+      sessionStorage.setItem('payment_completed', '1')
     }
-    
-    window.addEventListener('beforeunload', handleBeforeUnload)
+    clearBookingData()
+
+    // When user hits back, redirect to home
+    const handlePopState = () => {
+      window.history.pushState(null, '', window.location.pathname + window.location.search)
+      router.replace('/')
+    }
+
+    window.history.pushState(null, '', window.location.pathname + window.location.search)
+    window.addEventListener('popstate', handlePopState)
 
     return () => {
       window.removeEventListener('popstate', handlePopState)
-      window.removeEventListener('beforeunload', handleBeforeUnload)
     }
   }, [router])
 

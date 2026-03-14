@@ -69,6 +69,11 @@ export default function BookingServicesPage() {
   }
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('payment_completed') === '1') {
+      sessionStorage.removeItem('payment_completed')
+      router.replace('/')
+      return
+    }
     const location = sessionStorage.getItem('bookingLocation')
     const dateTime = sessionStorage.getItem('bookingDateTime')
     const customer = sessionStorage.getItem('customerDetails')

@@ -34,10 +34,12 @@ export async function GET(
     const dueAmount = Math.max(0, totalAmount - amountPaid)
 
     return NextResponse.json({
+      id: booking.id,
       token: booking.token,
       billNo,
       date: booking.date,
       timeSlot: booking.timeSlot,
+      locationId: booking.locationId,
       locationName: booking.location?.name ?? null,
       locationAddress: booking.location?.address ?? null,
       locationMobile: booking.location?.mobile ?? null,
@@ -46,6 +48,7 @@ export async function GET(
         id: bs.service.id,
         name: bs.service.name,
         price: bs.price,
+        duration: bs.service.duration ?? 30,
         quantity: bs.quantity ?? 1,
       })),
       paymentStatus: booking.payment?.paymentStatus || 'PENDING',

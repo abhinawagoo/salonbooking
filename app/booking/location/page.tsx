@@ -18,6 +18,11 @@ export default function LocationPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('payment_completed') === '1') {
+      sessionStorage.removeItem('payment_completed')
+      router.replace('/')
+      return
+    }
     fetch('/api/locations')
       .then((res) => res.json())
       .then((data) => {
@@ -25,7 +30,7 @@ export default function LocationPage() {
         setLoading(false)
       })
       .catch(() => setLoading(false))
-  }, [])
+  }, [router])
 
   const handleSelect = (location: Location) => {
     sessionStorage.setItem('bookingLocation', JSON.stringify({ id: location.id, name: location.name, address: location.address }))

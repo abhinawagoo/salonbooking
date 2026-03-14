@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { format, startOfDay, endOfDay, addDays, subMinutes, parseISO } from 'date-fns'
 import PaymentScreen from '@/components/PaymentScreen'
@@ -17,8 +17,9 @@ interface Service {
   quantity?: number
 }
 
-export default function PaymentPage() {
+function PaymentPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [services, setServices] = useState<Service[]>([])
   const [hasData, setHasData] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -27,13 +28,49 @@ export default function PaymentPage() {
   const [showArrivalPopup, setShowArrivalPopup] = useState(false)
   const [selectedPaymentType, setSelectedPaymentType] = useState<'FULL' | 'ADVANCE' | null>(null)
   const [businessHoursJson, setBusinessHoursJson] = useState<string | null>(null)
+  const [retryBookingId, setRetryBookingId] = useState<string | null>(null)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (sessionStorage.getItem('payment_completed') === '1') {
+      sessionStorage.removeItem('payment_completed')
+      router.replace('/')
+      return
+    }
+
+    const error = searchParams.get('error')
+    const bookingId = searchParams.get('bookingId')
+
+    if (error && bookingId) {
+      setPaymentError(error === 'payment_failed' ? 'Payment failed or was cancelled. You can retry below.' : error === 'callback_failed' ? 'Could not verify payment. Please retry.' : 'Something went wrong.')
+      setRetryBookingId(bookingId)
+      fetch(`/api/booking/${bookingId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.services) {
+            setServices(data.services.map((s: { id: string; name: string; price: number; duration?: number; quantity?: number }) => ({
+              id: s.id,
+              name: s.name,
+              price: s.price,
+              duration: s.duration ?? 30,
+              quantity: s.quantity ?? 1,
+            })))
+          }
+          setHasData(true)
+        })
+        .catch(() => {
+          setPaymentError('Could not load booking. Please start a new booking.')
+          setHasData(true)
+        })
+      return
+    }
+
     const location = sessionStorage.getItem('bookingLocation')
     const servicesData = sessionStorage.getItem('selectedServices')
     const customer = sessionStorage.getItem('customerDetails')
     const dateTime = sessionStorage.getItem('bookingDateTime')
-    
+
     if (!location || !customer || !dateTime) {
       router.push('/booking/location')
       return
@@ -62,7 +99,7 @@ export default function PaymentPage() {
       .then((r) => r.json())
       .then((data) => setBusinessHoursJson(data.businessHours ?? null))
       .catch(() => {})
-  }, [router])
+  }, [router, searchParams])
 
   const wouldExceedClosing = (svc: Service[]): boolean => {
     if (svc.length === 0 || !businessHoursJson) return false
@@ -105,9 +142,34 @@ export default function PaymentPage() {
   const doPayment = async (paymentType: 'FULL' | 'ADVANCE') => {
     setIsProcessing(true)
     try {
+      if (retryBookingId) {
+        const res = await fetch('/api/payment/retry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId: retryBookingId }),
+        })
+        const data = await res.json()
+        if (data.redirectUrl) {
+          router.replace(data.redirectUrl)
+          return
+        }
+        if (data.paymentUrl) {
+          window.location.href = data.paymentUrl
+          return
+        }
+        if (data.error) {
+          alert(data.error)
+          setIsProcessing(false)
+          return
+        }
+        alert('Failed to retry payment. Please try again.')
+        setIsProcessing(false)
+        return
+      }
+
       const customerDetails = JSON.parse(sessionStorage.getItem('customerDetails') || '{}')
       const dateTime = JSON.parse(sessionStorage.getItem('bookingDateTime') || '{}')
-      
+
       const location = JSON.parse(sessionStorage.getItem('bookingLocation') || '{}')
       const servicesPayload = services.flatMap((s) =>
         Array((s.quantity ?? 1)).fill(null).map(() => s.id)
@@ -245,6 +307,11 @@ export default function PaymentPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        {paymentError && (
+          <div className="mb-4 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+            {paymentError}
+          </div>
+        )}
         {isProcessing ? (
           <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 p-6 sm:p-12 shadow-sm text-center">
             <div className="inline-block animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-black mb-3 sm:mb-4"></div>
@@ -352,5 +419,17 @@ export default function PaymentPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function PaymentPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
+      </div>
+    }>
+      <PaymentPageContent />
+    </Suspense>
   )
 }

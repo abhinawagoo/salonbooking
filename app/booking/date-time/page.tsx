@@ -16,6 +16,11 @@ export default function DateTimePage() {
   const [totalDurationMinutes, setTotalDurationMinutes] = useState(30)
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('payment_completed') === '1') {
+      sessionStorage.removeItem('payment_completed')
+      router.replace('/')
+      return
+    }
     const locationJson = sessionStorage.getItem('bookingLocation')
     if (!locationJson) {
       router.push('/booking/location')
