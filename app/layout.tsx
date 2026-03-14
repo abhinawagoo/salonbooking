@@ -66,7 +66,7 @@ export default function RootLayout({
         />
         <Navigation />
         <ScrollToHash />
-        <main className="flex-1 bg-gray-50">{children}</main>
+        <main className="flex-1 bg-[#F8F3FA]">{children}</main>
         <Footer />
       </body>
     </html>

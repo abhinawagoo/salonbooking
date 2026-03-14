@@ -32,10 +32,10 @@ export default function Footer() {
   }
 
   return (
-    <footer className="bg-[#f5f0e8] text-gray-700 mt-auto border-t border-amber-200/70">
+    <footer className="bg-[#F8F3FA] text-gray-700 mt-auto border-t border-[#E6D6E6]/70">
       <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
         {/* Accordion: About */}
-        <div className="border-b border-amber-200/60">
+        <div className="border-b border-[#E6D6E6]/60">
           <button
             type="button"
             onClick={() => setAboutOpen((o) => !o)}
@@ -56,7 +56,7 @@ export default function Footer() {
                 href={WEBSITE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-teal-600 hover:text-teal-700 hover:underline"
+                className="inline-flex items-center gap-1 text-[#A24D89] hover:text-[#8B3D75] hover:underline"
               >
                 {WEBSITE_URL.replace(/^https?:\/\//, '')}
                 <ExternalLink size={14} />
@@ -66,7 +66,7 @@ export default function Footer() {
         </div>
 
         {/* Accordion: Quick Links */}
-        <div className="border-b border-amber-200/60">
+        <div className="border-b border-[#E6D6E6]/60">
           <button
             type="button"
             onClick={() => setQuickLinksOpen((o) => !o)}
@@ -124,21 +124,21 @@ export default function Footer() {
         </div>
 
         {/* Support box */}
-        <div className="mt-4 p-4 rounded-xl bg-white/70 border border-amber-200/60 text-center shadow-sm">
+        <div className="mt-4 p-4 rounded-xl bg-white/80 border border-[#E6D6E6]/60 text-center shadow-sm">
           <p className="text-sm font-medium text-gray-800 mb-1">
             Facing issues? Reach us at:
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <a
               href="tel:+918877799982"
-              className="inline-flex items-center gap-1.5 text-teal-600 font-medium hover:text-teal-700 hover:underline"
+              className="inline-flex items-center gap-1.5 text-[#A24D89] font-medium hover:text-[#8B3D75] hover:underline"
             >
               <Phone size={16} />
               +91 8877799982
             </a>
             <a
               href={`mailto:${SUPPORT_EMAIL}`}
-              className="inline-flex items-center gap-1.5 text-teal-600 font-medium hover:text-teal-700 hover:underline"
+              className="inline-flex items-center gap-1.5 text-[#A24D89] font-medium hover:text-[#8B3D75] hover:underline"
             >
               <Mail size={16} />
               {SUPPORT_EMAIL}
@@ -155,7 +155,7 @@ export default function Footer() {
               href={social.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-10 h-10 rounded-full border-2 border-amber-300/70 flex items-center justify-center text-gray-600 hover:border-gray-400 hover:text-gray-900 transition-colors"
+              className="w-10 h-10 rounded-full border-2 border-[#D8B0CF]/70 flex items-center justify-center text-gray-600 hover:border-[#A24D89] hover:text-gray-900 transition-colors"
               aria-label={social.name}
             >
               <span className="text-sm font-semibold">{social.icon}</span>
@@ -165,7 +165,7 @@ export default function Footer() {
         )}
 
         {/* Copyright */}
-        <div className="mt-8 pt-6 border-t border-amber-200/60 text-center text-xs text-gray-500 leading-relaxed">
+        <div className="mt-8 pt-6 border-t border-[#E6D6E6]/60 text-center text-xs text-gray-500 leading-relaxed">
           <p>
             Copyright 2017–2025 © {BRAND_NAME} | {WEBSITE_URL.replace(/^https?:\/\//, '')}
           </p>

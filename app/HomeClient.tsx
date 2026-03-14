@@ -54,22 +54,22 @@ export default function HomeClient() {
 
   if (loading) {
     return (
-      <div className="h-[calc(100vh-80px)] flex items-center justify-center bg-white">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-teal-600 border-t-transparent" />
+      <div className="h-[calc(100vh-80px)] flex items-center justify-center bg-[#F8F3FA]">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-[#EC738A] border-t-transparent" />
       </div>
     )
   }
 
   return (
     <>
-      <div className="flex flex-col h-[calc(100vh-80px)] bg-gradient-to-br from-rose-50/80 via-white to-amber-50/50 relative overflow-hidden">
-        <div className="flex-1 flex flex-col gap-4 sm:gap-5 px-4 py-4 sm:px-6 sm:py-5 md:px-8 md:py-6 min-h-0">
+      <div className="flex flex-col h-[calc(100vh-80px)] bg-gradient-to-b from-[#F8F3FA] via-[#F4EFF6] to-[#F0D6E6] relative overflow-hidden">
+        <div className="flex-1 flex flex-col gap-3 sm:gap-4 md:gap-5 px-4 py-4 sm:px-6 sm:py-5 md:px-8 md:py-6 min-h-0">
           {bannerSlides.length > 0 && (
-            <div className="flex-[0.45] min-h-0 overflow-visible">
+            <div className="flex-[0.4] sm:flex-[0.42] md:flex-[0.45] min-h-0 overflow-visible shrink-0">
               <HomeLandingBanner slides={bannerSlides} />
             </div>
           )}
-          <div className={`${bannerSlides.length > 0 ? 'flex-[0.55]' : 'flex-1'} min-h-0 overflow-visible`}>
+          <div className={`${bannerSlides.length > 0 ? 'flex-[0.6] sm:flex-[0.58] md:flex-[0.55]' : 'flex-1'} min-h-[200px] sm:min-h-[240px] md:min-h-[280px] overflow-visible flex`}>
             <HomeVideoCarousel videos={videos} />
           </div>
         </div>

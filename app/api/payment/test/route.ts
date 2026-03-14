@@ -26,6 +26,13 @@ export async function POST(request: Request) {
     if (!payment) {
       return NextResponse.json({ error: 'Payment not found' }, { status: 404 })
     }
+    if (payment.paymentStatus === 'COMPLETED') {
+      return NextResponse.json({
+        success: true,
+        message: 'Payment already completed',
+        redirectUrl: `/booking/confirmation?bookingId=${bookingId}`,
+      })
+    }
     const paidAmount = payment.amount
     await prisma.payment.update({
       where: { id: payment.id },
@@ -33,8 +40,8 @@ export async function POST(request: Request) {
         paymentStatus: 'COMPLETED',
         gatewayReference: `TEST-${Date.now()}`,
         gatewayResponse: JSON.stringify({ test: true }),
-        amountPaid: { increment: paidAmount },
-        onlineAmount: { increment: paidAmount },
+        amountPaid: paidAmount,
+        onlineAmount: paidAmount,
       },
     })
 

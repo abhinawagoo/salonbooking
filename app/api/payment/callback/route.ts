@@ -31,17 +31,20 @@ export async function GET(request: Request) {
 
     const isSuccess = state === 'COMPLETED' || state === 'PAID'
     if (isSuccess) {
-      const paidAmount = payment.amount
-      await prisma.payment.update({
-        where: { id: payment.id },
-        data: {
-          paymentStatus: 'COMPLETED',
-          gatewayReference: status?.orderId ?? undefined,
-          gatewayResponse: JSON.stringify(status),
-          amountPaid: { increment: paidAmount },
-          onlineAmount: { increment: paidAmount },
-        },
-      })
+      // Idempotent: only update if not already completed (avoids double-count when webhook + redirect both fire)
+      if (payment.paymentStatus !== 'COMPLETED') {
+        const paidAmount = payment.amount
+        await prisma.payment.update({
+          where: { id: payment.id },
+          data: {
+            paymentStatus: 'COMPLETED',
+            gatewayReference: status?.orderId ?? undefined,
+            gatewayResponse: JSON.stringify(status),
+            amountPaid: paidAmount,
+            onlineAmount: paidAmount,
+          },
+        })
+      }
       // Send invoice link to customer via WhatsApp Cloud API (direct, no BSP)
       const token = payment.booking?.token
       const user = payment.booking?.user

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 const AUTO_ADVANCE_MS = 5000
 const SWIPE_THRESHOLD = 50
@@ -54,8 +53,8 @@ export default function HomeLandingBanner({ slides, onNext }: HomeLandingBannerP
 
   if (slides.length === 0) {
     return (
-      <div className="w-full h-full min-h-[200px] rounded-[1.5rem] sm:rounded-[2rem] bg-gradient-to-br from-rose-100 via-amber-50 to-orange-100 flex items-center justify-center">
-        <p className="text-gray-600">Add a banner in Admin → Customize</p>
+      <div className="w-full h-full min-h-[200px] rounded-[1.5rem] sm:rounded-[2rem] bg-gradient-to-br from-[#F8F3FA] via-[#F4EFF6] to-[#F0D6E6] flex items-center justify-center">
+        <p className="text-[#6B5B73]">Add a banner in Admin → Customize</p>
       </div>
     )
   }
@@ -66,48 +65,26 @@ export default function HomeLandingBanner({ slides, onNext }: HomeLandingBannerP
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {slides.map((slide, i) => (
-        <div
-          key={i}
-          role="button"
-          tabIndex={0}
-          onClick={handleClick}
-          onKeyDown={(e) => e.key === 'Enter' && handleClick()}
-          className={`absolute inset-0 transition-opacity duration-400 cursor-pointer ${
-            i === activeIndex ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
-          }`}
-        >
-          <img
-            src={slide.imageUrl}
-            alt={slide.alt || (i === 0 ? "Shahsharam Salon best salon in Sasaram Bihar" : "Professional haircut at Shahsharam Salon Sasaram")}
-            className="absolute inset-0 w-full h-full object-cover rounded-[1.5rem] sm:rounded-[2rem]"
-            draggable={false}
-            loading={i === 0 ? 'eager' : 'lazy'}
-          />
-        </div>
-      ))}
-
-      {/* Prev / Next buttons */}
-      {slides.length > 1 && (
-        <>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); goPrev() }}
-            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/80 hover:bg-white shadow-md flex items-center justify-center text-gray-700 hover:text-gray-900 transition-colors"
-            aria-label="Previous slide"
-          >
-            <ChevronLeft size={24} />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); goNext() }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/80 hover:bg-white shadow-md flex items-center justify-center text-gray-700 hover:text-gray-900 transition-colors"
-            aria-label="Next slide"
-          >
-            <ChevronRight size={24} />
-          </button>
-        </>
-      )}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={handleClick}
+        onKeyDown={(e) => e.key === 'Enter' && handleClick()}
+        className="flex h-full cursor-pointer transition-transform duration-500 ease-out"
+        style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+      >
+        {slides.map((slide, i) => (
+          <div key={i} className="min-w-full flex-shrink-0 h-full relative">
+            <img
+              src={slide.imageUrl}
+              alt={slide.alt || (i === 0 ? "Shahsharam Salon best salon in Sasaram Bihar" : "Professional haircut at Shahsharam Salon Sasaram")}
+              className="absolute inset-0 w-full h-full object-cover rounded-[1.5rem] sm:rounded-[2rem]"
+              draggable={false}
+              loading={i === 0 ? 'eager' : 'lazy'}
+            />
+          </div>
+        ))}
+      </div>
 
       {/* Dots indicator */}
       {slides.length > 1 && (
@@ -116,7 +93,7 @@ export default function HomeLandingBanner({ slides, onNext }: HomeLandingBannerP
             <span
               key={i}
               className={`block w-2 h-2 rounded-full transition-all ring-1 ring-white/50 ${
-                i === activeIndex ? 'bg-rose-400 w-4' : 'bg-white/70'
+                i === activeIndex ? 'bg-[#EC738A] w-4' : 'bg-[#E6D6E6]'
               }`}
             />
           ))}

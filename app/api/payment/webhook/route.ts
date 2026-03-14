@@ -57,15 +57,17 @@ export async function POST(request: Request) {
       const paymentStatus = isSuccess ? 'COMPLETED' : 'FAILED'
       const paidAmount = isSuccess ? payment.amount : 0
 
+      // Idempotent: only update amounts if not already completed (avoids double-count when webhook + callback both fire)
+      const alreadyCompleted = payment.paymentStatus === 'COMPLETED'
       await prisma.payment.update({
         where: { id: payment.id },
         data: {
           paymentStatus,
           gatewayReference: (payload.orderId as string) ?? undefined,
           gatewayResponse: JSON.stringify(body),
-          ...(isSuccess && {
-            amountPaid: { increment: paidAmount },
-            onlineAmount: { increment: paidAmount },
+          ...(isSuccess && !alreadyCompleted && {
+            amountPaid: paidAmount,
+            onlineAmount: paidAmount,
           }),
         },
       })

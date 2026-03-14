@@ -72,7 +72,7 @@ export default function AdminCustomizePage() {
     setSaving(true)
     try {
       const res = await fetch('/api/admin/settings', {
-        method: 'PUT',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       })
@@ -168,7 +168,7 @@ export default function AdminCustomizePage() {
       setSettings((s) => ({ ...s, galleryImageUrls: updatedUrls }))
       setSaving(true)
       const saveRes = await fetch('/api/admin/settings', {
-        method: 'PUT',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...settings, galleryImageUrls: updatedUrls }),
       })

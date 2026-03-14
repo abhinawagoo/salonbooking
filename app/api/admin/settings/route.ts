@@ -86,7 +86,7 @@ export async function GET() {
   }
 }
 
-export async function PUT(request: Request) {
+async function updateSettings(request: Request) {
   try {
     const body = await request.json()
     const { brandName, menuLabel, heroVideoUrls, galleryImageUrls, invoiceWebsite, invoiceUpiId, invoiceTerms, facebookUrl, instagramUrl } = body
@@ -184,4 +184,13 @@ export async function PUT(request: Request) {
     const message = error instanceof Error ? error.message : 'Failed to update settings'
     return NextResponse.json({ error: message }, { status: 500 })
   }
+}
+
+export async function PUT(request: Request) {
+  return updateSettings(request)
+}
+
+/** POST also supported – some CDNs/proxies (e.g. Cloudflare) block PUT; POST works everywhere */
+export async function POST(request: Request) {
+  return updateSettings(request)
 }

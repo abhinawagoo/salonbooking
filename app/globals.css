@@ -8,14 +8,14 @@
   --background-end-rgb: 255, 255, 255;
 }
 
-/* Dark top area so nav has no white strip; page content sets its own bg */
+/* Soft lavender/pink theme */
 html {
-  background: #0f172a;
+  background: #F8F3FA;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: #0f172a;
+  background: #F8F3FA;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
