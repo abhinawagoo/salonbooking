@@ -29,4 +29,6 @@ export const SEO = {
   baseUrl: BASE_URL.replace(/\/$/, ''),
   /** Used in structured data and og:image. Add /public/banner.jpg or set ogImageUrl in production. */
   ogImageUrl: `${BASE_URL.replace(/\/$/, '')}/banner.jpg`,
+  /** Logo for Google Knowledge Panel – use square image (min 112×112px). Add /public/logo.png or set NEXT_PUBLIC_LOGO_URL */
+  logoUrl: process.env.NEXT_PUBLIC_LOGO_URL || `${BASE_URL.replace(/\/$/, '')}/favicon.png`,
 }

@@ -13,6 +13,14 @@ export const metadata: Metadata = {
   },
   description: SEO.description,
   keywords: SEO.keywords,
+  icons: {
+    icon: [
+      { url: "/favicon.png", type: "image/png", sizes: "48x48" },
+      { url: "/favicon.png", type: "image/png", sizes: "32x32" },
+    ],
+    shortcut: "/favicon.png",
+    apple: "/apple-icon.png",
+  },
   openGraph: {
     title: SEO.ogTitle,
     description: SEO.ogDescription,
@@ -43,6 +51,7 @@ export default function RootLayout({
     '@type': 'HairSalon',
     name: SEO.siteName,
     image: SEO.ogImageUrl,
+    logo: SEO.logoUrl,
     url: SEO.baseUrl,
     telephone: SEO.telephone,
     address: {
