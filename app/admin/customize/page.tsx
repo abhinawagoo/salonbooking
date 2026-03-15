@@ -138,7 +138,18 @@ export default function AdminCustomizePage() {
       const res = await fetch('/api/admin/upload', { method: 'POST', body: formData })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Upload failed')
-      setSettings((s) => ({ ...s, galleryImageUrls: [...s.galleryImageUrls, data.url || ''].slice(0, MAX_IMAGES) }))
+      const newUrls = [...settings.galleryImageUrls, data.url || ''].filter(Boolean).slice(0, MAX_IMAGES)
+      setSettings((s) => ({ ...s, galleryImageUrls: newUrls }))
+      // Auto-save so gallery updates immediately on homepage/gallery page
+      const saveRes = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...settings, galleryImageUrls: newUrls }),
+      })
+      if (!saveRes.ok) {
+        const errData = await saveRes.json().catch(() => ({}))
+        throw new Error(errData?.error || errData?.message || 'Upload saved but failed to persist')
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Upload failed')
     } finally {

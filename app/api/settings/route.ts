@@ -55,19 +55,22 @@ export async function GET() {
     if (heroVideoUrls.length === 0 && process.env.NEXT_PUBLIC_HERO_VIDEO_URL) {
       heroVideoUrls = [process.env.NEXT_PUBLIC_HERO_VIDEO_URL]
     }
-    return NextResponse.json({
-      brandName: s.brandName,
-      menuLabel: s.menuLabel,
-      heroBannerImageUrl: null,
-      heroVideoUrls,
-      galleryImageUrls: parseJsonArray(s.galleryImageUrls),
-      invoiceWebsite: s.invoiceWebsite ?? null,
-      invoiceGst: s.invoiceGst ?? null,
-      invoiceUpiId: s.invoiceUpiId ?? null,
-      invoiceTerms: s.invoiceTerms ?? null,
-      facebookUrl: s.facebookUrl ?? null,
-      instagramUrl: s.instagramUrl ?? null,
-    })
+    return NextResponse.json(
+      {
+        brandName: s.brandName,
+        menuLabel: s.menuLabel,
+        heroBannerImageUrl: null,
+        heroVideoUrls,
+        galleryImageUrls: parseJsonArray(s.galleryImageUrls),
+        invoiceWebsite: s.invoiceWebsite ?? null,
+        invoiceGst: s.invoiceGst ?? null,
+        invoiceUpiId: s.invoiceUpiId ?? null,
+        invoiceTerms: s.invoiceTerms ?? null,
+        facebookUrl: s.facebookUrl ?? null,
+        instagramUrl: s.instagramUrl ?? null,
+      },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    )
   } catch (error) {
     console.error('Error fetching settings:', error)
     return NextResponse.json(DEFAULT)
