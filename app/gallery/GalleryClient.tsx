@@ -8,7 +8,7 @@ export default function GalleryClient() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/settings')
+    fetch('/api/settings', { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         setImages(Array.isArray(data.galleryImageUrls) ? data.galleryImageUrls : [])

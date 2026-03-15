@@ -32,7 +32,7 @@ export default function HomeClient() {
     setUserRole('CUSTOMER')
     sessionStorage.removeItem('selectedServices')
     Promise.all([
-      fetch('/api/settings').then((r) => r.json()),
+      fetch('/api/settings', { cache: 'no-store' }).then((r) => r.json()),
       fetch('/api/home/videos').then((r) => r.json()),
     ])
       .then(([settingsData, videosData]) => {

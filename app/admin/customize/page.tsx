@@ -44,7 +44,7 @@ export default function AdminCustomizePage() {
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch('/api/admin/settings')
+      const res = await fetch('/api/admin/settings', { cache: 'no-store' })
       const data = await res.json()
       setSettings({
         brandName: data.brandName ?? 'Salon',
@@ -75,6 +75,7 @@ export default function AdminCustomizePage() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || data?.message || 'Failed to save')
+      await fetchSettings()
       alert('Customization saved!')
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to save. Please try again.')
@@ -138,18 +139,26 @@ export default function AdminCustomizePage() {
       const res = await fetch('/api/admin/upload', { method: 'POST', body: formData })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Upload failed')
-      const newUrls = [...settings.galleryImageUrls, data.url || ''].filter(Boolean).slice(0, MAX_IMAGES)
-      setSettings((s) => ({ ...s, galleryImageUrls: newUrls }))
-      // Auto-save so gallery updates immediately on homepage/gallery page
+      const uploadedUrl = data.url
+      if (!uploadedUrl || typeof uploadedUrl !== 'string') {
+        throw new Error('Upload did not return a valid URL')
+      }
+      const newUrls = [...settings.galleryImageUrls, uploadedUrl].slice(0, MAX_IMAGES)
+      const payload = {
+        ...settings,
+        galleryImageUrls: newUrls,
+      }
       const saveRes = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...settings, galleryImageUrls: newUrls }),
+        body: JSON.stringify(payload),
       })
+      const saveData = await saveRes.json().catch(() => ({}))
       if (!saveRes.ok) {
-        const errData = await saveRes.json().catch(() => ({}))
-        throw new Error(errData?.error || errData?.message || 'Upload saved but failed to persist')
+        throw new Error(saveData?.error || saveData?.message || 'Failed to save gallery')
       }
+      setSettings((s) => ({ ...s, galleryImageUrls: newUrls }))
+      await fetchSettings()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Upload failed')
     } finally {
@@ -162,30 +171,27 @@ export default function AdminCustomizePage() {
     const url = settings.galleryImageUrls[index]
     if (!url) return
     const updatedUrls = settings.galleryImageUrls.filter((_, i) => i !== index)
+    setSaving(true)
     try {
-      const res = await fetch('/api/admin/upload/delete', {
+      await fetch('/api/admin/upload/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
       })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        alert(data?.error || 'Failed to delete from storage. Please try again.')
-        return
-      }
-      setSettings((s) => ({ ...s, galleryImageUrls: updatedUrls }))
-      setSaving(true)
+      const payload = { ...settings, galleryImageUrls: updatedUrls }
       const saveRes = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...settings, galleryImageUrls: updatedUrls }),
+        body: JSON.stringify(payload),
       })
       const saveData = await saveRes.json().catch(() => ({}))
       if (!saveRes.ok) {
-        alert(saveData?.error || saveData?.message || 'Deleted from storage but failed to save. Please try again.')
+        throw new Error(saveData?.error || saveData?.message || 'Failed to save')
       }
-    } catch {
-      alert('Failed to delete from storage. Please try again.')
+      setSettings((s) => ({ ...s, galleryImageUrls: updatedUrls }))
+      await fetchSettings()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete. Please try again.')
     } finally {
       setSaving(false)
     }
