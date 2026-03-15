@@ -38,7 +38,18 @@ export default function CustomerDetailsPage() {
 
   const handleSubmit = (data: { name: string; mobile: string; notes?: string }) => {
     sessionStorage.setItem('customerDetails', JSON.stringify(data))
-    router.push('/booking/services')
+    // Skip services page if user already selected services from /services
+    const savedServices = sessionStorage.getItem('selectedServices')
+    let hasServices = false
+    if (savedServices) {
+      try {
+        const parsed = JSON.parse(savedServices) as { quantity?: number }[]
+        hasServices = Array.isArray(parsed) && parsed.length > 0 && parsed.some((s) => (s.quantity ?? 1) > 0)
+      } catch {
+        // ignore
+      }
+    }
+    router.push(hasServices ? '/booking/payment' : '/booking/services')
   }
 
   if (!hasData) {

@@ -72,14 +72,14 @@ export function generateInvoicePDF(data: InvoiceData) {
   const cellPad = 10
   const rowH = 14
   const lineHeight = 5
-  // Column widths: match HTML - No 5%, Services 35%, SAC 10%, Qty 10%, Rate 14%, Tax 14%, Total 12%
+  // Column widths: No 5%, Services 30%, SAC 10%, Qty 10%, Rate 15%, Tax 15%, Total 15% (wider for Rs. amounts)
   const colNo = tableWidth * 0.05
-  const colServices = tableWidth * 0.35
+  const colServices = tableWidth * 0.30
   const colSAC = tableWidth * 0.10
   const colQty = tableWidth * 0.10
-  const colRate = tableWidth * 0.14
-  const colTax = tableWidth * 0.14
-  const colTotal = tableWidth * 0.12
+  const colRate = tableWidth * 0.15
+  const colTax = tableWidth * 0.15
+  const colTotal = tableWidth * 0.15
   const colX = {
     no: contentLeft,
     services: contentLeft + colNo,
@@ -138,38 +138,47 @@ export function generateInvoicePDF(data: InvoiceData) {
   }
 
   const leftX = hasLogo ? contentLeft + 36 : contentLeft
-  doc.setTextColor(...BLACK)
-  doc.setFontSize(22)
-  doc.setFont('helvetica', 'bold')
-  doc.text(salonName, leftX, yPos + 14)
-  doc.setFontSize(10)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(...GRAY)
-  let lineY = yPos + 20
-  if (data.locationMobile) {
-    doc.text(data.locationMobile, leftX, lineY)
-    lineY += 6
-  }
-  if (data.locationAddress) {
-    doc.text(data.locationAddress, leftX, lineY)
-    lineY += 6
-  }
-  if (data.website) {
-    doc.text(data.website, leftX, lineY)
-    lineY += 6
-  }
-  if (data.gstNumber) {
-    doc.text(`GST: ${data.gstNumber}`, leftX, lineY)
-    lineY += 6
-  }
-
+  // Reserve space for "TAX INVOICE" on the right - constrain left content to avoid overlap
+  const headerRightEdge = contentRight - 2
+  const maxLeftWidth = headerRightEdge - leftX - 48 // leave ~48pt for TAX INVOICE
   doc.setTextColor(...BLACK)
   doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
-  doc.text('TAX INVOICE', contentRight, yPos + 14, { align: 'right' })
+  const salonLines = doc.splitTextToSize(salonName, Math.max(60, maxLeftWidth))
+  doc.text(salonLines, leftX, yPos + 12)
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(...GRAY)
+  const salonLineH = 8
+  let lineY = yPos + 12 + salonLines.length * salonLineH
+  const smallLineH = 5
+  if (data.locationMobile) {
+    doc.text(data.locationMobile, leftX, lineY)
+    lineY += smallLineH
+  }
+  if (data.locationAddress) {
+    const addrLines = doc.splitTextToSize(data.locationAddress, Math.max(60, maxLeftWidth))
+    doc.text(addrLines, leftX, lineY)
+    lineY += addrLines.length * smallLineH
+  }
+  if (data.website) {
+    const siteText = data.website.replace(/^https?:\/\//, '')
+    const siteLines = doc.splitTextToSize(siteText, Math.max(60, maxLeftWidth))
+    doc.text(siteLines, leftX, lineY)
+    lineY += siteLines.length * smallLineH
+  }
+  if (data.gstNumber) {
+    doc.text(`GST: ${data.gstNumber}`, leftX, lineY)
+    lineY += smallLineH
+  }
 
-  const infoRowSpacing = Math.round(sectionSpacing * 0.4) // 60% reduction
-  yPos = Math.max(lineY, yPos + 36) + infoRowSpacing
+  doc.setTextColor(...BLACK)
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text('TAX INVOICE', contentRight, yPos + 12, { align: 'right' })
+
+  const infoRowSpacing = Math.round(sectionSpacing * 0.4)
+  yPos = Math.max(lineY, yPos + 32) + infoRowSpacing
 
   // ----- INFO ROW -----
   doc.setFontSize(10)

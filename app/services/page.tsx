@@ -158,7 +158,7 @@ export default function ServicesPage() {
       return
     }
     sessionStorage.setItem('selectedServices', JSON.stringify(selectedServices))
-    router.push('/cart')
+    router.push('/booking/location')
   }
 
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.price * s.quantity, 0)
