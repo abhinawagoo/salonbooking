@@ -66,7 +66,7 @@ export default function TaxInvoice({ data }: { data: TaxInvoiceData }) {
             <img
               src={data.logoUrl}
               alt=""
-              className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded shrink-0"
+              className="w-16 h-16 sm:w-24 sm:h-24 object-cover rounded shrink-0"
             />
           )}
           <div className="min-w-0">

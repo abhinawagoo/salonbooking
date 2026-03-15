@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Download, FileText, Printer } from 'lucide-react'
+import { FileText, Printer } from 'lucide-react'
 import { format } from 'date-fns'
 import { formatTime12h } from '@/lib/formatTime'
 import TaxInvoice from '@/components/TaxInvoice'
@@ -37,7 +37,6 @@ function InvoicePageContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [invoiceSettings, setInvoiceSettings] = useState<{ brandName?: string; website?: string; gstNumber?: string; terms?: string }>({})
-  const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
     document.body.dataset.page = 'invoice'
@@ -74,34 +73,6 @@ function InvoicePageContent() {
       .finally(() => setLoading(false))
   }, [searchParams])
 
-  const handleDownloadBill = async () => {
-    if (!bookingData) return
-    setDownloading(true)
-    try {
-      const res = await fetch('/api/invoice/pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingToken: bookingData.token }),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Failed to generate PDF')
-      }
-      const blob = await res.blob()
-      const filename = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? `Tax-Invoice-${bookingData.token}.pdf`
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to download PDF')
-    } finally {
-      setDownloading(false)
-    }
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -135,19 +106,11 @@ function InvoicePageContent() {
       <div className="max-w-[800px] mx-auto min-w-0">
         <div className="text-center mb-6 print:hidden">
           <h1 className="text-2xl font-bold text-gray-900">Your booking & bill</h1>
-          <p className="text-gray-600 mt-1">View details and download your bill</p>
+          <p className="text-gray-600 mt-1">View details and print your bill</p>
           <div className="flex flex-wrap justify-center gap-3 mt-4">
             <button
-              onClick={handleDownloadBill}
-              disabled={downloading}
-              className="bg-black text-white px-6 py-3 rounded-full font-light hover:bg-gray-800 transition-all duration-200 flex items-center gap-2 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              <Download size={18} />
-              {downloading ? 'Generating...' : 'Download PDF'}
-            </button>
-            <button
               onClick={() => window.print()}
-              className="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-full font-light hover:bg-gray-50 transition-all duration-200 flex items-center gap-2"
+              className="bg-black text-white px-6 py-3 rounded-full font-light hover:bg-gray-800 transition-all duration-200 flex items-center gap-2 shadow-lg"
             >
               <Printer size={18} />
               Print

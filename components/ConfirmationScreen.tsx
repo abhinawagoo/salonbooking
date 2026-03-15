@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { CheckCircle, Download, Printer, Home, FileText } from 'lucide-react'
+import { CheckCircle, Printer, Home, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { formatTime12h } from '@/lib/formatTime'
@@ -56,8 +56,6 @@ export default function ConfirmationScreen({
 }: ConfirmationScreenProps) {
   const router = useRouter()
   const [invoiceSettings, setInvoiceSettings] = useState<{ brandName?: string; website?: string; gstNumber?: string; terms?: string }>({})
-  const [downloading, setDownloading] = useState(false)
-
   useEffect(() => {
     fetch('/api/settings')
       .then((r) => r.json())
@@ -69,62 +67,6 @@ export default function ConfirmationScreen({
       }))
       .catch(() => {})
   }, [])
-
-  const handleDownloadInvoice = async () => {
-    setDownloading(true)
-    try {
-      let settings: { brandName?: string; invoiceWebsite?: string; invoiceGst?: string; invoiceTerms?: string } = {}
-      try {
-        settings = await fetch('/api/settings').then((r) => r.json())
-      } catch {
-        // use defaults
-      }
-      const payload = {
-        bookingToken,
-        date: date instanceof Date ? date : new Date(date as string),
-        timeSlot,
-        services,
-        paymentStatus,
-        totalAmount,
-        amountPaid,
-        dueAmount,
-        onlineAmount,
-        cashAmount,
-        customerName,
-        customerMobile,
-        locationName,
-        locationAddress,
-        locationMobile,
-        locationImageUrl,
-        brandName: settings.brandName,
-        website: settings.invoiceWebsite ?? 'shahnazsalonsasaram.com',
-        gstNumber: settings.invoiceGst ?? undefined,
-        terms: settings.invoiceTerms ?? '',
-        invoiceNumber: billNo ?? bookingToken,
-      }
-      const res = await fetch('/api/invoice/pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Failed to generate PDF')
-      }
-      const blob = await res.blob()
-      const filename = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? `Tax-Invoice-${bookingToken}.pdf`
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to download PDF')
-    } finally {
-      setDownloading(false)
-    }
-  }
 
   const handlePrint = () => {
     window.print()
@@ -147,16 +89,8 @@ export default function ConfirmationScreen({
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3 justify-center">
           <button
-            onClick={handleDownloadInvoice}
-            disabled={downloading}
-            className="bg-black text-white px-6 py-3 rounded-full font-light hover:bg-gray-800 transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
-          >
-            <Download size={18} />
-            {downloading ? 'Generating...' : 'Download Invoice'}
-          </button>
-          <button
             onClick={handlePrint}
-            className="bg-white text-black border-2 border-black px-6 py-3 rounded-full font-light hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl"
+            className="bg-black text-white px-6 py-3 rounded-full font-light hover:bg-gray-800 transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl"
           >
             <Printer size={18} />
             Print

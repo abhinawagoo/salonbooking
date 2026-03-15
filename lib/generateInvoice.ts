@@ -128,16 +128,17 @@ export function generateInvoicePDF(data: InvoiceData) {
 
   // ----- HEADER -----
   const hasLogo = data.locationImageDataUrl && data.locationImageDataUrl.startsWith('data:image/')
+  const logoSize = 48
   if (hasLogo && data.locationImageDataUrl) {
     try {
       const fmt = data.locationImageDataUrl.match(/^data:image\/(\w+);/)?.[1] === 'jpeg' ? 'JPEG' : 'PNG'
-      doc.addImage(data.locationImageDataUrl, fmt, contentLeft, yPos, 32, 32)
+      doc.addImage(data.locationImageDataUrl, fmt, contentLeft, yPos, logoSize, logoSize)
     } catch {
       // skip
     }
   }
 
-  const leftX = hasLogo ? contentLeft + 36 : contentLeft
+  const leftX = hasLogo ? contentLeft + logoSize + 6 : contentLeft
   // Reserve space for "TAX INVOICE" on the right - constrain left content to avoid overlap
   const headerRightEdge = contentRight - 2
   const maxLeftWidth = headerRightEdge - leftX - 48 // leave ~48pt for TAX INVOICE
@@ -178,7 +179,8 @@ export function generateInvoicePDF(data: InvoiceData) {
   doc.text('TAX INVOICE', contentRight, yPos + 12, { align: 'right' })
 
   const infoRowSpacing = Math.round(sectionSpacing * 0.4)
-  yPos = Math.max(lineY, yPos + 32) + infoRowSpacing
+  const logoHeight = hasLogo ? logoSize : 0
+  yPos = Math.max(lineY, yPos + logoHeight) + infoRowSpacing
 
   // ----- INFO ROW -----
   doc.setFontSize(10)
