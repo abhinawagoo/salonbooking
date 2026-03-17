@@ -50,7 +50,8 @@ export async function GET(request: Request) {
       const user = payment.booking?.user
       if (token && user?.mobile && process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID) {
         const invoiceLink = `${APP_URL}/booking/invoice?token=${encodeURIComponent(token)}`
-        sendInvoiceWhatsApp(user.mobile, user.name || 'Customer', invoiceLink).catch((e) =>
+        const amountPaid = payment.amount
+        sendInvoiceWhatsApp(user.mobile, user.name || 'Customer', amountPaid, new Date(), invoiceLink).catch((e) =>
           console.error('Invoice WhatsApp failed:', e)
         )
       }

@@ -7,6 +7,7 @@
 
 import { toE164 } from '@/lib/phone'
 import { formatTime12h } from '@/lib/formatTime'
+import { formatCurrency } from '@/lib/currency'
 
 const GRAPH_API = 'https://graph.facebook.com/v21.0'
 
@@ -203,21 +204,89 @@ export async function sendOtpWhatsApp(mobile: string, otp: string): Promise<{ ok
 }
 
 /**
- * Send invoice link to customer after payment (via WhatsApp Cloud API).
- * Uses template with body params: {{1}} customer name, {{2}} invoice link.
- * Create template in Meta: "Hi {{1}}, your booking payment is confirmed. View & download invoice: {{2}}"
- * When USE_WHATSAPP_HELLO_WORLD_TEST=true, sends hello_world instead (for testing before business verification).
+ * Send invoice/receipt link to customer after payment (via WhatsApp Cloud API).
+ * Template: "Hi {{1}}, your {{2}} bill payment of {{3}} has been successfully received. Your payment date was {{4}}. Thank you!"
+ * Button: "Receipt" with dynamic URL {{1}} = invoice link.
+ * Params: {{1}} name, {{2}} "booking", {{3}} amount (₹X), {{4}} payment date.
  */
 export async function sendInvoiceWhatsApp(
   mobile: string,
   customerName: string,
+  amountPaid: number,
+  paymentDate: Date,
   invoiceLink: string
 ): Promise<{ ok: boolean; error?: string }> {
   if (process.env.USE_WHATSAPP_HELLO_WORLD_TEST === 'true') {
     return sendHelloWorldWhatsApp(mobile)
   }
+  const { token, phoneId } = getConfig()
+  if (!token || !phoneId) {
+    console.warn('WhatsApp Cloud: WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID not set')
+    return { ok: false, error: 'Not configured' }
+  }
+
   const templateName = process.env.WHATSAPP_INVOICE_TEMPLATE_NAME || 'invoice_ready'
-  return sendWhatsAppTemplate(mobile, templateName, [customerName, invoiceLink])
+  const lang = process.env.WHATSAPP_TEMPLATE_LANG || 'en'
+  const billType = process.env.WHATSAPP_INVOICE_BILL_TYPE || 'booking for Shahnaz Salon Sasaram'
+  const amountFormatted = formatCurrency(amountPaid)
+  const dateFormatted = formatPaymentDate(paymentDate)
+
+  const to = toE164(mobile)
+  const url = `${GRAPH_API}/${phoneId}/messages`
+
+  const body = {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'template',
+    template: {
+      name: templateName,
+      language: { code: lang },
+      components: [
+        {
+          type: 'body',
+          parameters: [
+            { type: 'text', text: customerName },
+            { type: 'text', text: billType },
+            { type: 'text', text: amountFormatted },
+            { type: 'text', text: dateFormatted },
+          ],
+        },
+        {
+          type: 'button',
+          sub_type: 'url',
+          index: '0',
+          parameters: [{ type: 'text', text: invoiceLink }],
+        },
+      ],
+    },
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    })
+    const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+    if (!res.ok) {
+      const msg = data.error?.message || res.statusText
+      logWhatsAppError(res.status, msg, to)
+      return { ok: false, error: msg }
+    }
+    return { ok: true }
+  } catch (e) {
+    console.error('WhatsApp Cloud invoice_ready request failed:', e)
+    return { ok: false, error: String(e) }
+  }
+}
+
+/** Format payment date for WhatsApp template (e.g. "December 31, 2025"). */
+function formatPaymentDate(d: Date): string {
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
 }
 
 /**

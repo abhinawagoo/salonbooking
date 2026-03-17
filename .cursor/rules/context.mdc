@@ -27,6 +27,6 @@ alwaysApply: true
 ## WhatsApp Cloud API (direct, no BSP)
 
 - **OTP**: `sendOtpWhatsApp()` in `lib/whatsapp-cloud.ts` – used by `/api/auth/otp/send` when `WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID` are set
-- **Invoice**: `sendInvoiceWhatsApp()` – sent after payment (callback + webhook). Template: "Hi {{1}}, your booking payment is confirmed. View & download invoice: {{2}}"
+- **Invoice**: `sendInvoiceWhatsApp()` – sent after payment (callback + webhook). Template: "Hi {{1}}, your {{2}} bill payment of {{3}} has been successfully received. Your payment date was {{4}}. Thank you!" + Receipt button (dynamic URL)
 - **Setup**: Meta Business Manager → App → WhatsApp → Phone Number ID + Access Token. Create OTP (Copy Code) and invoice templates; set names in `.env`
 - **Testing without WhatsApp**: Set `LOG_OTP_WHEN_NO_WHATSAPP=true` – OTP is logged to server console. Invoice is simply not sent (payment still completes). Auth is disabled by default.
