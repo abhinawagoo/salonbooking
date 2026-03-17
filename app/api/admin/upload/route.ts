@@ -20,8 +20,8 @@ export async function POST(request: Request) {
     }
 
     const folder = type as R2Folder
-    if (!['service', 'hero', 'gallery', 'subcategory', 'home_videos', 'location'].includes(folder)) {
-      return NextResponse.json({ error: 'Invalid type. Use service, hero, gallery, subcategory, home_videos, or location.' }, { status: 400 })
+    if (!['service', 'hero', 'gallery', 'subcategory', 'home_videos', 'location', 'signature'].includes(folder)) {
+      return NextResponse.json({ error: 'Invalid type. Use service, hero, gallery, subcategory, home_videos, location, or signature.' }, { status: 400 })
     }
 
     const fileType = file.type
@@ -62,7 +62,14 @@ export async function POST(request: Request) {
       if (url) {
         return NextResponse.json({ url })
       }
-      // Fall through to local if R2 upload failed
+      // On Vercel/serverless, local storage is read-only - return error instead of falling through
+      if (process.env.VERCEL) {
+        return NextResponse.json(
+          { error: 'Storage upload failed. Check R2 credentials and bucket settings.' },
+          { status: 500 }
+        )
+      }
+      console.warn('R2 upload failed, falling back to local storage')
     }
 
     await mkdir(UPLOAD_DIR, { recursive: true })
@@ -75,7 +82,8 @@ export async function POST(request: Request) {
     const url = `/uploads/${uniqueName}`
     return NextResponse.json({ url })
   } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Upload failed'
     console.error('Upload error:', error)
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

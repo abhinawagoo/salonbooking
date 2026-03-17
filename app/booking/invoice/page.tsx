@@ -36,7 +36,7 @@ function InvoicePageContent() {
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [invoiceSettings, setInvoiceSettings] = useState<{ brandName?: string; website?: string; gstNumber?: string; terms?: string }>({})
+  const [invoiceSettings, setInvoiceSettings] = useState<{ brandName?: string; website?: string; gstNumber?: string; terms?: string; invoiceSignatureUrl?: string }>({})
 
   useEffect(() => {
     document.body.dataset.page = 'invoice'
@@ -67,6 +67,7 @@ function InvoicePageContent() {
           website: settings.invoiceWebsite ?? 'shahnazsalonsasaram.com',
           gstNumber: settings.invoiceGst ?? undefined,
           terms: settings.invoiceTerms ?? '',
+          invoiceSignatureUrl: settings.invoiceSignatureUrl ?? undefined,
         })
       })
       .catch((e) => setError(e.message || 'Something went wrong'))
@@ -127,6 +128,7 @@ function InvoicePageContent() {
             website: invoiceSettings.website ?? 'shahnazsalonsasaram.com',
             gstNumber: invoiceSettings.gstNumber ?? undefined,
             logoUrl: bookingData.locationImageUrl ?? undefined,
+            signatureUrl: invoiceSettings.invoiceSignatureUrl ?? undefined,
             invoiceNo: bookingData.billNo ?? bookingData.token,
             invoiceDate: format(dateObj, 'dd/MM/yyyy'),
             appointmentTime: bookingData.timeSlot ? formatTime12h(bookingData.timeSlot) : undefined,

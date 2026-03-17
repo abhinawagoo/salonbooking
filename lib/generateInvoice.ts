@@ -36,6 +36,7 @@ export interface InvoiceData {
   gstNumber?: string
   terms?: string
   invoiceNumber?: string
+  signatureDataUrl?: string
 }
 
 const BORDER_COLOR: [number, number, number] = [229, 224, 216] // #E5E0D8
@@ -342,15 +343,32 @@ export function generateInvoicePDF(data: InvoiceData) {
   yPos = bottomSectionY + bottomSectionHeight + 16
 
   // ----- SIGNATURE BOX -----
-  checkPageBreak(40)
-  const sigW = 58
-  const sigH = 32
+  checkPageBreak(50)
+  const sigW = 72
+  const sigH = 48
   const sigPadding = 10
   doc.setDrawColor(...BORDER_COLOR)
   doc.rect(contentRight - sigW, yPos, sigW, sigH, 'S')
+  // Image above "Signature" label, then salon name
+  if (data.signatureDataUrl) {
+    try {
+      const fmt = data.signatureDataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG'
+      const imgW = 64
+      const imgH = 24
+      doc.addImage(data.signatureDataUrl, fmt, contentRight - sigW + 4, yPos + 4, imgW, imgH)
+    } catch {
+      // Fall through
+    }
+  }
+  doc.setFontSize(7)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(...GRAY)
+  doc.text('Signature', contentRight - sigW + sigPadding, yPos + (data.signatureDataUrl ? 32 : 14))
   doc.setFontSize(8)
-  doc.text('Signature', contentRight - sigW + sigPadding, yPos + 10)
-  doc.text(salonName, contentRight - sigW + sigPadding, yPos + 20)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...BLACK)
+  doc.text(salonName, contentRight - sigW + sigPadding, yPos + (data.signatureDataUrl ? 44 : 26))
+  doc.setFont('helvetica', 'normal')
 
   // Outer border
   doc.setDrawColor(...BORDER_COLOR)

@@ -55,7 +55,7 @@ export default function ConfirmationScreen({
   locationImageUrl,
 }: ConfirmationScreenProps) {
   const router = useRouter()
-  const [invoiceSettings, setInvoiceSettings] = useState<{ brandName?: string; website?: string; gstNumber?: string; terms?: string }>({})
+  const [invoiceSettings, setInvoiceSettings] = useState<{ brandName?: string; website?: string; gstNumber?: string; terms?: string; invoiceSignatureUrl?: string }>({})
   useEffect(() => {
     fetch('/api/settings')
       .then((r) => r.json())
@@ -64,6 +64,7 @@ export default function ConfirmationScreen({
         website: s.invoiceWebsite ?? s.website ?? 'shahnazsalonsasaram.com',
         gstNumber: s.invoiceGst ?? undefined,
         terms: s.invoiceTerms ?? '',
+        invoiceSignatureUrl: s.invoiceSignatureUrl ?? undefined,
       }))
       .catch(() => {})
   }, [])
@@ -121,6 +122,7 @@ export default function ConfirmationScreen({
           website: invoiceSettings.website ?? 'shahnazsalonsasaram.com',
           gstNumber: invoiceSettings.gstNumber ?? undefined,
           logoUrl: locationImageUrl ?? undefined,
+          signatureUrl: invoiceSettings.invoiceSignatureUrl ?? undefined,
           invoiceNo: billNo ?? bookingToken,
           invoiceDate: format(date instanceof Date ? date : new Date(date as string), 'dd/MM/yyyy'),
           appointmentTime: formatTime12h(timeSlot),

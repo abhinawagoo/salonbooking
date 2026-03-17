@@ -16,6 +16,7 @@ interface Settings {
   galleryImageUrls: string[]
   invoiceWebsite: string
   invoiceGst: string
+  invoiceSignatureUrl: string | null
   facebookUrl: string
   instagramUrl: string
 }
@@ -29,6 +30,7 @@ export default function AdminCustomizePage() {
     galleryImageUrls: [],
     invoiceWebsite: '',
     invoiceGst: '',
+    invoiceSignatureUrl: null,
     facebookUrl: '',
     instagramUrl: '',
   })
@@ -36,6 +38,7 @@ export default function AdminCustomizePage() {
   const [saving, setSaving] = useState(false)
   const [uploadingBanner, setUploadingBanner] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadingSignature, setUploadingSignature] = useState(false)
 
   useEffect(() => {
     setUserRole('ADMIN')
@@ -54,6 +57,7 @@ export default function AdminCustomizePage() {
         galleryImageUrls: Array.isArray(data.galleryImageUrls) ? data.galleryImageUrls : [],
         invoiceWebsite: data.invoiceWebsite ?? '',
         invoiceGst: data.invoiceGst ?? '',
+        invoiceSignatureUrl: data.invoiceSignatureUrl ?? null,
         facebookUrl: data.facebookUrl ?? '',
         instagramUrl: data.instagramUrl ?? '',
       })
@@ -101,6 +105,68 @@ export default function AdminCustomizePage() {
     } finally {
       setUploadingBanner(false)
       e.target.value = ''
+    }
+  }
+
+  const handleSignatureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      alert('Please use PNG, JPEG or WebP image.')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Signature image should be under 2MB.')
+      return
+    }
+    setUploadingSignature(true)
+    try {
+      const formData = new FormData()
+      formData.set('file', file)
+      formData.set('type', 'signature')
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: formData })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Upload failed')
+      const url = typeof data.url === 'string' && data.url.trim() ? data.url.trim() : null
+      if (!url) throw new Error('Upload did not return a valid URL')
+      setSettings((s) => ({ ...s, invoiceSignatureUrl: url }))
+      const payload = { ...settings, invoiceSignatureUrl: url }
+      const saveRes = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const saveData = await saveRes.json().catch(() => ({}))
+      if (!saveRes.ok) throw new Error(saveData?.error || saveData?.message || 'Failed to save settings')
+      await fetchSettings()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploadingSignature(false)
+      e.target.value = ''
+    }
+  }
+
+  const removeSignature = async () => {
+    const url = settings.invoiceSignatureUrl
+    if (!url) return
+    try {
+      await fetch('/api/admin/upload/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      })
+      setSettings((s) => ({ ...s, invoiceSignatureUrl: null }))
+      const payload = { ...settings, invoiceSignatureUrl: null }
+      const saveRes = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!saveRes.ok) throw new Error('Failed to save')
+      await fetchSettings()
+    } catch {
+      alert('Failed to remove signature')
     }
   }
 
@@ -278,6 +344,33 @@ export default function AdminCustomizePage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="e.g. 10DHAPR1747H1ZM"
                 />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Signature (on invoice)</label>
+                <p className="text-xs text-gray-500 mb-2">Small image shown in the signature box on bills. PNG with transparent background works best.</p>
+                <div className="flex items-center gap-3">
+                  {settings.invoiceSignatureUrl ? (
+                    <>
+                      <div className="w-20 h-10 border border-gray-200 rounded flex items-center justify-center bg-white overflow-hidden">
+                        <img src={settings.invoiceSignatureUrl} alt="Signature" className="max-w-full max-h-full object-contain" />
+                      </div>
+                      <div className="flex gap-2">
+                        <label className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer">
+                          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleSignatureUpload} disabled={uploadingSignature} />
+                          {uploadingSignature ? 'Uploading...' : 'Replace'}
+                        </label>
+                        <button type="button" onClick={removeSignature} className="px-3 py-1.5 rounded-lg border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50">
+                          Remove
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <label className="px-4 py-2 rounded-lg border-2 border-dashed border-gray-300 text-sm font-medium text-gray-600 hover:border-primary-500 hover:bg-primary-50/30 cursor-pointer">
+                      <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleSignatureUpload} disabled={uploadingSignature} />
+                      {uploadingSignature ? 'Uploading...' : 'Upload signature'}
+                    </label>
+                  )}
+                </div>
               </div>
             </div>
           </div>

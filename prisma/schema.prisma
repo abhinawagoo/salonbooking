@@ -181,6 +181,7 @@ model SiteCustomization {
   invoiceGst          String?  // GSTIN - Goods and Services Tax Identification Number
   invoiceUpiId        String?  // UPI ID for payment QR on invoice
   invoiceTerms        String?  // Terms & conditions on invoice (e.g. "Goods once sold will not be taken back")
+  invoiceSignatureUrl String?  // Signature image shown in invoice signature box
   facebookUrl         String?  // Facebook profile/page URL for footer
   instagramUrl        String?  // Instagram profile URL for footer
   updatedAt           DateTime @updatedAt

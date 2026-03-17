@@ -14,7 +14,7 @@ function parseJsonArray(str: string | null): string[] {
   }
 }
 
-type SettingsRow = { brandName: string; menuLabel: string; heroVideoUrls: string | null; galleryImageUrls: string | null; invoiceWebsite: string | null; invoiceGst: string | null; invoiceUpiId: string | null; invoiceTerms: string | null; facebookUrl: string | null; instagramUrl: string | null }
+type SettingsRow = { brandName: string; menuLabel: string; heroVideoUrls: string | null; galleryImageUrls: string | null; invoiceWebsite: string | null; invoiceGst: string | null; invoiceUpiId: string | null; invoiceTerms: string | null; invoiceSignatureUrl: string | null; facebookUrl: string | null; instagramUrl: string | null }
 
 const defaultSettings = {
   brandName: 'Salon',
@@ -26,6 +26,7 @@ const defaultSettings = {
   invoiceGst: null as string | null,
   invoiceUpiId: null as string | null,
   invoiceTerms: null as string | null,
+  invoiceSignatureUrl: null as string | null,
   facebookUrl: null as string | null,
   instagramUrl: null as string | null,
 }
@@ -36,7 +37,7 @@ export async function GET() {
     try {
       rows = await prisma.$queryRaw<SettingsRow[]>`
         SELECT "brandName", "menuLabel", "heroVideoUrls", "galleryImageUrls",
-          "invoiceWebsite", "invoiceGst", "invoiceUpiId", "invoiceTerms",
+          "invoiceWebsite", "invoiceGst", "invoiceUpiId", "invoiceTerms", "invoiceSignatureUrl",
           "facebookUrl", "instagramUrl"
         FROM "SiteCustomization" WHERE id = 1 LIMIT 1
       `
@@ -82,6 +83,7 @@ export async function GET() {
       invoiceGst: s.invoiceGst ?? null,
       invoiceUpiId: s.invoiceUpiId ?? null,
       invoiceTerms: s.invoiceTerms ?? null,
+      invoiceSignatureUrl: (s as SettingsRow).invoiceSignatureUrl ?? null,
       facebookUrl: s.facebookUrl ?? null,
       instagramUrl: s.instagramUrl ?? null,
     })
@@ -94,7 +96,7 @@ export async function GET() {
 async function updateSettings(request: Request) {
   try {
     const body = await request.json()
-    const { brandName, menuLabel, heroVideoUrls, galleryImageUrls, invoiceWebsite, invoiceGst, invoiceUpiId, invoiceTerms, facebookUrl, instagramUrl } = body
+    const { brandName, menuLabel, heroVideoUrls, galleryImageUrls, invoiceWebsite, invoiceGst, invoiceUpiId, invoiceTerms, invoiceSignatureUrl, facebookUrl, instagramUrl } = body
 
     const heroArr = Array.isArray(heroVideoUrls) ? heroVideoUrls.slice(0, 5) : []
     const galleryArr = Array.isArray(galleryImageUrls)
@@ -131,6 +133,7 @@ async function updateSettings(request: Request) {
     const invGst = invoiceGst !== undefined ? String(invoiceGst).trim() || null : undefined
     const invUpi = invoiceUpiId !== undefined ? String(invoiceUpiId).trim() || null : undefined
     const invTerms = invoiceTerms !== undefined ? String(invoiceTerms).trim() || null : undefined
+    const invSig = invoiceSignatureUrl !== undefined ? String(invoiceSignatureUrl).trim() || null : undefined
     const fbUrl = facebookUrl !== undefined ? String(facebookUrl).trim() || null : undefined
     const igUrl = instagramUrl !== undefined ? String(instagramUrl).trim() || null : undefined
 
@@ -146,6 +149,7 @@ async function updateSettings(request: Request) {
         invoiceGst: invGst ?? null,
         invoiceUpiId: invUpi ?? null,
         invoiceTerms: invTerms ?? null,
+        invoiceSignatureUrl: invSig ?? null,
         facebookUrl: fbUrl ?? null,
         instagramUrl: igUrl ?? null,
       },
@@ -158,24 +162,13 @@ async function updateSettings(request: Request) {
         ...(invGst !== undefined && { invoiceGst: invGst }),
         ...(invUpi !== undefined && { invoiceUpiId: invUpi }),
         ...(invTerms !== undefined && { invoiceTerms: invTerms }),
+        ...(invSig !== undefined && { invoiceSignatureUrl: invSig }),
         ...(fbUrl !== undefined && { facebookUrl: fbUrl }),
         ...(igUrl !== undefined && { instagramUrl: igUrl }),
       },
     })
 
-    const rows: SettingsRow[] = [{
-      brandName: s.brandName,
-      menuLabel: s.menuLabel,
-      heroVideoUrls: s.heroVideoUrls,
-      galleryImageUrls: s.galleryImageUrls,
-      invoiceWebsite: s.invoiceWebsite,
-      invoiceGst: s.invoiceGst,
-      invoiceUpiId: s.invoiceUpiId,
-      invoiceTerms: s.invoiceTerms,
-      facebookUrl: s.facebookUrl,
-      instagramUrl: s.instagramUrl,
-    }]
-    const r = rows[0]
+    const r = s
     return NextResponse.json({
       brandName: r?.brandName ?? 'Salon',
       menuLabel: r?.menuLabel ?? 'Services',
@@ -186,6 +179,7 @@ async function updateSettings(request: Request) {
       invoiceGst: r?.invoiceGst ?? null,
       invoiceUpiId: r?.invoiceUpiId ?? null,
       invoiceTerms: r?.invoiceTerms ?? null,
+      invoiceSignatureUrl: r?.invoiceSignatureUrl ?? null,
       facebookUrl: r?.facebookUrl ?? null,
       instagramUrl: r?.instagramUrl ?? null,
     })

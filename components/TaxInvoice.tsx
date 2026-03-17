@@ -21,6 +21,7 @@ export interface TaxInvoiceData {
   website?: string
   gstNumber?: string
   logoUrl?: string
+  signatureUrl?: string
   invoiceNo: string
   invoiceDate: string
   /** Appointment time in 12h format (e.g. "2:00 PM") */
@@ -241,12 +242,15 @@ export default function TaxInvoice({ data }: { data: TaxInvoiceData }) {
         </div>
       </div>
 
-      {/* Signature Box - bottom right */}
+      {/* Signature Box - bottom right: image above "Signature" label, then salon name */}
       <div className="flex justify-end mt-4 sm:mt-6">
         <div
-          className="rounded-lg flex flex-col justify-end pb-2 pl-3 pt-2 border border-[#E5E0D8] w-28 sm:w-36 h-12 sm:h-14"
+          className="rounded-lg flex flex-col justify-end pb-2 pl-3 pr-2 pt-2 border border-[#E5E0D8] w-36 sm:w-44 min-h-[5rem] sm:min-h-[6rem] overflow-hidden"
         >
-          <span className="text-xs text-gray-600">Signature</span>
+          {data.signatureUrl ? (
+            <img src={data.signatureUrl} alt="Signature" className="w-full max-w-[9rem] h-12 sm:h-14 object-contain object-left-bottom mb-1.5 shrink-0" />
+          ) : null}
+          <span className="text-xs text-gray-500">Signature</span>
           <span className="text-xs font-semibold text-gray-900 truncate">{data.salonName}</span>
         </div>
       </div>

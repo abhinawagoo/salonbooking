@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic'
 /** Fetch image from URL and return base64 data URL (server-side, no CORS). */
 async function fetchImageAsDataUrl(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': 'SalonBooking/1.0' } })
+    const absUrl = url.startsWith('/') ? `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${url}` : url
+    const res = await fetch(absUrl, { headers: { 'User-Agent': 'SalonBooking/1.0' } })
     if (!res.ok) return null
     const buf = Buffer.from(await res.arrayBuffer())
     const contentType = res.headers.get('content-type') || 'image/jpeg'
@@ -67,6 +68,10 @@ export async function POST(request: Request) {
         terms: site?.invoiceTerms ?? undefined,
         invoiceNumber: billNo,
       }
+      if (site?.invoiceSignatureUrl) {
+        const sigDataUrl = await fetchImageAsDataUrl(site.invoiceSignatureUrl)
+        if (sigDataUrl) payload.signatureDataUrl = sigDataUrl
+      }
       if (payload.locationImageUrl) {
         const dataUrl = await fetchImageAsDataUrl(payload.locationImageUrl)
         if (dataUrl) payload.locationImageDataUrl = dataUrl
@@ -103,7 +108,20 @@ export async function POST(request: Request) {
       if (dataUrl) data.locationImageDataUrl = dataUrl
     }
 
-    const payload: InvoiceData = { ...data, invoiceNumber: billNo }
+    // Fetch signature from site settings when not in payload
+    let signatureDataUrl: string | undefined
+    if (!data.signatureDataUrl) {
+      const { prisma: prismaForSite } = await import('@/lib/prisma')
+      const site = await prismaForSite.siteCustomization.findFirst({ where: { id: 1 } })
+      if (site?.invoiceSignatureUrl) {
+        const sig = await fetchImageAsDataUrl(site.invoiceSignatureUrl)
+        if (sig) signatureDataUrl = sig
+      }
+    } else {
+      signatureDataUrl = data.signatureDataUrl
+    }
+
+    const payload: InvoiceData = { ...data, invoiceNumber: billNo, signatureDataUrl }
     const { buffer, filename } = generateInvoicePDF(payload)
     return new NextResponse(buffer, {
       headers: {
