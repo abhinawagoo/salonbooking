@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendInvoiceWhatsApp } from '@/lib/whatsapp-cloud'
 import { getOrAssignBillNo } from '@/lib/billNo'
+import { getPublicInvoiceUrl } from '@/lib/invoiceUrl'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
     if (process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID) {
       const b = payment.booking
       if (b?.token && b?.user?.mobile) {
-        const invoiceLink = `${APP_URL}/booking/invoice?token=${encodeURIComponent(b.token)}`
+        const invoiceLink = getPublicInvoiceUrl(b.token)
         void (async () => {
           try {
             const billNo = await getOrAssignBillNo(bookingId)

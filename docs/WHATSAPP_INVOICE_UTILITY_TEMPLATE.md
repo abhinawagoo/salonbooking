@@ -1,5 +1,7 @@
 # WhatsApp invoice template – Meta mapping & production
 
+**Button opens `example.com`?** See **`docs/WHATSAPP_BUTTON_EXAMPLE_COM_FIX.md`** — fix the button URL in Meta (not only in code).
+
 ## Variable mapping (final)
 
 | Place | Variable | App sends | Example |

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendInvoiceWhatsApp } from '@/lib/whatsapp-cloud'
 import { getOrAssignBillNo } from '@/lib/billNo'
+import { getPublicInvoiceUrl } from '@/lib/invoiceUrl'
 import crypto from 'crypto'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
           select: { token: true, user: { select: { name: true, mobile: true } } },
         })
         if (b?.token && b?.user?.mobile) {
-          const invoiceLink = `${APP_URL}/booking/invoice?token=${encodeURIComponent(b.token)}`
+          const invoiceLink = getPublicInvoiceUrl(b.token)
           const amountPaid = payment.amount
           void (async () => {
             try {

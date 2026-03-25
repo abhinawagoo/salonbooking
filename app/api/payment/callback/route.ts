@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getPhonePeOrderStatus } from '@/lib/phonepe'
 import { sendInvoiceWhatsApp } from '@/lib/whatsapp-cloud'
 import { getOrAssignBillNo } from '@/lib/billNo'
+import { getPublicInvoiceUrl } from '@/lib/invoiceUrl'
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')
 
@@ -50,7 +51,7 @@ export async function GET(request: Request) {
       const token = payment.booking?.token
       const user = payment.booking?.user
       if (token && user?.mobile && process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID) {
-        const invoiceLink = `${APP_URL}/booking/invoice?token=${encodeURIComponent(token)}`
+        const invoiceLink = getPublicInvoiceUrl(token)
         const amountPaid = payment.amount
         void (async () => {
           try {

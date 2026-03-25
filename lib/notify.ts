@@ -8,6 +8,7 @@
 
 import { sendBookingConfirmationWhatsApp } from './whatsapp-cloud'
 import { toE164 } from './phone'
+import { getPublicInvoiceUrl } from './invoiceUrl'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
@@ -23,7 +24,7 @@ export interface BookingNotificationPayload {
 }
 
 function buildInvoiceLink(token: string): string {
-  return `${APP_URL}/booking/invoice?token=${encodeURIComponent(token)}`
+  return getPublicInvoiceUrl(token)
 }
 
 function buildSmsMessage(p: BookingNotificationPayload, isStaff: boolean): string {
