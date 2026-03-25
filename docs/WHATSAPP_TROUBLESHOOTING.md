@@ -13,6 +13,22 @@
 
 ---
 
+## Error #100: Invalid parameter
+
+**Cause:** Parameter format, length, or validation failed. Common causes:
+
+1. **Body parameter length** – Each body variable is limited to ~30 characters. Long names or text can trigger this.
+2. **Language code mismatch** – Template language (e.g. `en`) must match `WHATSAPP_TEMPLATE_LANG` in `.env`.
+3. **Currency/special characters** – Symbols like ₹ or commas in amounts can cause issues. We use `Rs. 500` format.
+4. **Button URL** – Dynamic URL must be a valid `https://` URL.
+
+**Fix:**
+- Check server logs for exact error details (we log full Meta response).
+- Ensure `WHATSAPP_TEMPLATE_LANG` matches your template (e.g. `en` or `en_US`).
+- If template is in English (US), set `WHATSAPP_TEMPLATE_LANG="en_US"`.
+
+---
+
 ## Error #132001: Template name does not exist in the translation
 
 **Cause:** The template name in your request doesn't match what's in Meta, or the language code is wrong.

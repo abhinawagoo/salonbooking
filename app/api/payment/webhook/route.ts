@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendInvoiceWhatsApp } from '@/lib/whatsapp-cloud'
+import { getOrAssignBillNo } from '@/lib/billNo'
 import crypto from 'crypto'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
@@ -9,19 +10,24 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
  * PhonePe S2S Webhook (recommended for verifying payment).
  * Docs: https://developer.phonepe.com/payment-gateway/website-integration/standard-checkout/api-integration/api-reference/webhook
  * Events: checkout.order.completed | checkout.order.failed | pg.refund.completed | pg.refund.failed
- * Auth: Authorization header = SHA256(username:password). Configure same in Dashboard → Webhook.
+ * Auth: Authorization header = SHA256(username:password) (hex). Configure the same username/password in PhonePe Dashboard → Webhook.
+ * Security: use long random strings (not your email); see .env.example. Comparison uses timing-safe equality.
  */
 function verifyWebhookAuth(request: Request): boolean {
   const username = process.env.PHONEPE_WEBHOOK_USERNAME
   const password = process.env.PHONEPE_WEBHOOK_PASSWORD
   if (!username || !password) return false
-  const expected = crypto
+  const expectedHex = crypto
     .createHash('sha256')
     .update(`${username}:${password}`)
     .digest('hex')
   const header = request.headers.get('Authorization') ?? ''
-  const received = header.replace(/^SHA256\s+/i, '').trim()
-  return received === expected
+  const receivedHex = header.replace(/^SHA256\s+/i, '').trim().toLowerCase()
+  if (!/^[0-9a-f]{64}$/i.test(receivedHex)) return false
+  const a = Buffer.from(expectedHex, 'hex')
+  const b = Buffer.from(receivedHex, 'hex')
+  if (a.length !== b.length) return false
+  return crypto.timingSafeEqual(a, b)
 }
 
 export async function POST(request: Request) {
@@ -80,9 +86,20 @@ export async function POST(request: Request) {
         if (b?.token && b?.user?.mobile) {
           const invoiceLink = `${APP_URL}/booking/invoice?token=${encodeURIComponent(b.token)}`
           const amountPaid = payment.amount
-          sendInvoiceWhatsApp(b.user.mobile, b.user.name || 'Customer', amountPaid, new Date(), invoiceLink).catch((e) =>
-            console.error('Invoice WhatsApp failed:', e)
-          )
+          void (async () => {
+            try {
+              const billNo = await getOrAssignBillNo(bookingId)
+              const p = await prisma.payment.findFirst({ where: { bookingId } })
+              const balanceDue = Math.max(0, (p?.totalAmount ?? 0) - (p?.amountPaid ?? 0))
+              await sendInvoiceWhatsApp(b.user.mobile, b.user.name || 'Customer', amountPaid, new Date(), invoiceLink, {
+                billNo,
+                balanceDue,
+                bookingToken: b.token,
+              })
+            } catch (e) {
+              console.error('Invoice WhatsApp failed:', e)
+            }
+          })()
         }
       }
       return NextResponse.json({ ok: true })

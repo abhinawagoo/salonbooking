@@ -39,8 +39,17 @@ Follow these steps to get your salon booking app live. Your repo is already on G
 | `PHONEPE_SALT_KEY` | Your PhonePe salt key |
 | `PHONEPE_SALT_INDEX` | `1` |
 | `PHONEPE_ENV` | `sandbox` (use `production` when you go live with real payments) |
+| `WHATSAPP_ACCESS_TOKEN` | Meta → App → WhatsApp → temporary/permanent token (invoice + OTP) |
+| `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp → API Setup → Phone number ID |
+| `WHATSAPP_INVOICE_TEMPLATE_NAME` | Must match your approved Utility template name (e.g. `invoice_receipt`) |
+| `WHATSAPP_TEMPLATE_LANG` | Must match template language in Meta (`en` or `en_US`) |
+| `WHATSAPP_INVOICE_TEMPLATE_LEGACY` | `false` for the Shahnaz invoice template (see `docs/WHATSAPP_INVOICE_UTILITY_TEMPLATE.md`) |
+| `WHATSAPP_INVOICE_BUTTON_FULL_URL` | `false` — button sends **token** only when Meta URL is `...?token={{1}}` |
+| `WHATSAPP_INVOICE_HEADER_DOCUMENT_URL` | Only if Meta template expects **dynamic** PDF header; omit if header is static in Meta |
 
 Optional later: R2, MSG91, etc. (see `.env.example`).
+
+**Invoice WhatsApp after payment:** set `NEXT_PUBLIC_APP_URL` to your real domain (e.g. `https://shahnazsalonsasaram.com`) so invoice links in WhatsApp are correct. Full checklist: `docs/WHATSAPP_INVOICE_UTILITY_TEMPLATE.md` → Production checklist.
 
 3. **Redeploy**: Deployments → … on latest → **Redeploy**.
 

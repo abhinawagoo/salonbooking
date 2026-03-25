@@ -7,7 +7,6 @@
 
 import { toE164 } from '@/lib/phone'
 import { formatTime12h } from '@/lib/formatTime'
-import { formatCurrency } from '@/lib/currency'
 
 const GRAPH_API = 'https://graph.facebook.com/v21.0'
 
@@ -203,18 +202,46 @@ export async function sendOtpWhatsApp(mobile: string, otp: string): Promise<{ ok
   }
 }
 
+export type SendInvoiceWhatsAppOptions = {
+  /** Bill number e.g. BILL-000152 (utility template). */
+  billNo?: string
+  /** Outstanding balance in INR (utility template {{4}}). Defaults to 0 when omitted. */
+  balanceDue?: number
+  /**
+   * Booking token for button {{1}} when Meta URL is like ...?token={{1}} (utility template).
+   * If omitted, token is parsed from `invoiceLink` query string.
+   */
+  bookingToken?: string
+}
+
+function extractTokenFromInvoiceLink(invoiceLink: string): string {
+  try {
+    const u = new URL(invoiceLink)
+    const t = u.searchParams.get('token')
+    if (t) return decodeURIComponent(t)
+  } catch {
+    // ignore
+  }
+  return invoiceLink.trim()
+}
+
 /**
- * Send invoice/receipt link to customer after payment (via WhatsApp Cloud API).
- * Template: "Hi {{1}}, your {{2}} bill payment of {{3}} has been successfully received. Your payment date was {{4}}. Thank you!"
- * Button: "Receipt" with dynamic URL {{1}} = invoice link.
- * Params: {{1}} name, {{2}} "booking", {{3}} amount (₹X), {{4}} payment date.
+ * Send invoice/receipt link after payment (WhatsApp Cloud API).
+ *
+ * **Utility template (default)** – see `docs/WHATSAPP_INVOICE_UTILITY_TEMPLATE.md`
+ * Body: {{1}} name, {{2}} invoice, {{3}} amount, {{4}} balance.
+ * Button: dynamic URL suffix — token only (…?token={{1}}), unless WHATSAPP_INVOICE_BUTTON_FULL_URL=true.
+ *
+ * **Legacy template** – set `WHATSAPP_INVOICE_TEMPLATE_LEGACY=true`
+ * Body: Hi {{1}}, your {{2}} bill payment of {{3}} … date {{4}}.
  */
 export async function sendInvoiceWhatsApp(
   mobile: string,
   customerName: string,
   amountPaid: number,
   paymentDate: Date,
-  invoiceLink: string
+  invoiceLink: string,
+  options?: SendInvoiceWhatsAppOptions
 ): Promise<{ ok: boolean; error?: string }> {
   if (process.env.USE_WHATSAPP_HELLO_WORLD_TEST === 'true') {
     return sendHelloWorldWhatsApp(mobile)
@@ -225,14 +252,82 @@ export async function sendInvoiceWhatsApp(
     return { ok: false, error: 'Not configured' }
   }
 
-  const templateName = process.env.WHATSAPP_INVOICE_TEMPLATE_NAME || 'invoice_ready'
+  const templateName = process.env.WHATSAPP_INVOICE_TEMPLATE_NAME || 'invoice_receipt'
   const lang = process.env.WHATSAPP_TEMPLATE_LANG || 'en'
-  const billType = process.env.WHATSAPP_INVOICE_BILL_TYPE || 'booking for Shahnaz Salon Sasaram'
-  const amountFormatted = formatCurrency(amountPaid)
-  const dateFormatted = formatPaymentDate(paymentDate)
+  const legacy = process.env.WHATSAPP_INVOICE_TEMPLATE_LEGACY === 'true'
+  const headerImageUrl = process.env.WHATSAPP_INVOICE_HEADER_IMAGE_URL?.trim()
+  const headerDocumentUrl = process.env.WHATSAPP_INVOICE_HEADER_DOCUMENT_URL?.trim()
+  const headerDocumentFilename =
+    process.env.WHATSAPP_INVOICE_HEADER_DOCUMENT_FILENAME?.trim() || 'Receipt.pdf'
 
+  const nameParam = (customerName || 'Customer').trim().slice(0, 30)
+  const amountFormatted = `Rs. ${Math.round(amountPaid)}`.slice(0, 30)
   const to = toE164(mobile)
-  const url = `${GRAPH_API}/${phoneId}/messages`
+  const apiUrl = `${GRAPH_API}/${phoneId}/messages`
+
+  const components: Record<string, unknown>[] = []
+
+  // Header: document (PDF) takes precedence over image — must match Meta template header type
+  if (!legacy && headerDocumentUrl) {
+    components.push({
+      type: 'header',
+      parameters: [
+        {
+          type: 'document',
+          document: { link: headerDocumentUrl, filename: headerDocumentFilename },
+        },
+      ],
+    })
+  } else if (!legacy && headerImageUrl) {
+    components.push({
+      type: 'header',
+      parameters: [{ type: 'image', image: { link: headerImageUrl } }],
+    })
+  }
+
+  if (legacy) {
+    const billType = (process.env.WHATSAPP_INVOICE_BILL_TYPE || 'booking for Shahnaz Salon Sasaram').trim().slice(0, 30)
+    const dateFormatted = formatPaymentDate(paymentDate).slice(0, 30)
+    components.push({
+      type: 'body',
+      parameters: [
+        { type: 'text', text: nameParam },
+        { type: 'text', text: billType },
+        { type: 'text', text: amountFormatted },
+        { type: 'text', text: dateFormatted },
+      ],
+    })
+  } else {
+    const billNo = (options?.billNo || '—').trim().slice(0, 30)
+    const balance = options?.balanceDue ?? 0
+    const balanceFormatted = `Rs. ${Math.round(balance)}`.slice(0, 30)
+    components.push({
+      type: 'body',
+      parameters: [
+        { type: 'text', text: nameParam },
+        { type: 'text', text: billNo },
+        { type: 'text', text: amountFormatted },
+        { type: 'text', text: balanceFormatted },
+      ],
+    })
+  }
+
+  // Button: Meta template often uses fixed domain + ?token={{1}} — send token only, not full URL
+  let buttonParam: string
+  if (legacy) {
+    buttonParam = invoiceLink.trim()
+  } else if (process.env.WHATSAPP_INVOICE_BUTTON_FULL_URL === 'true') {
+    buttonParam = invoiceLink.trim()
+  } else {
+    buttonParam = (options?.bookingToken || extractTokenFromInvoiceLink(invoiceLink)).trim()
+  }
+
+  components.push({
+    type: 'button',
+    sub_type: 'url',
+    index: 0,
+    parameters: [{ type: 'text', text: buttonParam }],
+  })
 
   const body = {
     messaging_product: 'whatsapp',
@@ -241,28 +336,12 @@ export async function sendInvoiceWhatsApp(
     template: {
       name: templateName,
       language: { code: lang },
-      components: [
-        {
-          type: 'body',
-          parameters: [
-            { type: 'text', text: customerName },
-            { type: 'text', text: billType },
-            { type: 'text', text: amountFormatted },
-            { type: 'text', text: dateFormatted },
-          ],
-        },
-        {
-          type: 'button',
-          sub_type: 'url',
-          index: '0',
-          parameters: [{ type: 'text', text: invoiceLink }],
-        },
-      ],
+      components,
     },
   }
 
   try {
-    const res = await fetch(url, {
+    const res = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -270,15 +349,17 @@ export async function sendInvoiceWhatsApp(
       },
       body: JSON.stringify(body),
     })
-    const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+    const data = (await res.json().catch(() => ({}))) as { error?: { message?: string; error_data?: { details?: string } } }
     if (!res.ok) {
       const msg = data.error?.message || res.statusText
+      console.error('[WhatsApp invoice] Error:', msg, '| Full:', JSON.stringify(data))
+      if (data.error?.error_data?.details) console.error('[WhatsApp] Details:', data.error.error_data.details)
       logWhatsAppError(res.status, msg, to)
       return { ok: false, error: msg }
     }
     return { ok: true }
   } catch (e) {
-    console.error('WhatsApp Cloud invoice_ready request failed:', e)
+    console.error('WhatsApp Cloud invoice template failed:', e)
     return { ok: false, error: String(e) }
   }
 }

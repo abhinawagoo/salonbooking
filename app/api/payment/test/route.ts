@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendInvoiceWhatsApp } from '@/lib/whatsapp-cloud'
+import { getOrAssignBillNo } from '@/lib/billNo'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
@@ -49,9 +50,20 @@ export async function POST(request: Request) {
       const b = payment.booking
       if (b?.token && b?.user?.mobile) {
         const invoiceLink = `${APP_URL}/booking/invoice?token=${encodeURIComponent(b.token)}`
-        sendInvoiceWhatsApp(b.user.mobile, b.user.name || 'Customer', paidAmount, new Date(), invoiceLink).catch((e) =>
-          console.error('Invoice WhatsApp failed:', e)
-        )
+        void (async () => {
+          try {
+            const billNo = await getOrAssignBillNo(bookingId)
+            const p = await prisma.payment.findFirst({ where: { bookingId } })
+            const balanceDue = Math.max(0, (p?.totalAmount ?? 0) - (p?.amountPaid ?? 0))
+            await sendInvoiceWhatsApp(b.user.mobile, b.user.name || 'Customer', paidAmount, new Date(), invoiceLink, {
+              billNo,
+              balanceDue,
+              bookingToken: b.token,
+            })
+          } catch (e) {
+            console.error('Invoice WhatsApp failed:', e)
+          }
+        })()
       }
     }
 

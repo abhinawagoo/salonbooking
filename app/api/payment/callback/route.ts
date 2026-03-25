@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getPhonePeOrderStatus } from '@/lib/phonepe'
 import { sendInvoiceWhatsApp } from '@/lib/whatsapp-cloud'
+import { getOrAssignBillNo } from '@/lib/billNo'
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')
 
@@ -51,9 +52,20 @@ export async function GET(request: Request) {
       if (token && user?.mobile && process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID) {
         const invoiceLink = `${APP_URL}/booking/invoice?token=${encodeURIComponent(token)}`
         const amountPaid = payment.amount
-        sendInvoiceWhatsApp(user.mobile, user.name || 'Customer', amountPaid, new Date(), invoiceLink).catch((e) =>
-          console.error('Invoice WhatsApp failed:', e)
-        )
+        void (async () => {
+          try {
+            const billNo = await getOrAssignBillNo(bookingId)
+            const p = await prisma.payment.findFirst({ where: { bookingId } })
+            const balanceDue = Math.max(0, (p?.totalAmount ?? 0) - (p?.amountPaid ?? 0))
+            await sendInvoiceWhatsApp(user.mobile, user.name || 'Customer', amountPaid, new Date(), invoiceLink, {
+              billNo,
+              balanceDue,
+              bookingToken: token,
+            })
+          } catch (e) {
+            console.error('Invoice WhatsApp failed:', e)
+          }
+        })()
       }
       return NextResponse.redirect(`${base}/booking/confirmation?bookingId=${bookingId}&payment=completed`)
     }
