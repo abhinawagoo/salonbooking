@@ -45,8 +45,8 @@ function logWhatsAppError(status: number, msg: string, to: string, context: What
     }
   } else if (msg.includes('132012')) {
     console.warn(
-      `[WhatsApp #132012] Template parameter/header mismatch. Invoice sends body + button only (no header). ` +
-        'In Meta, remove any header from the template or ensure body variable count matches (6 body vars + button).'
+      `[WhatsApp #132012] Template parameter/header mismatch. For customer_invoice: image header URL + 6 body vars + URL button. ` +
+        'Legacy: body + button only. Check WHATSAPP_INVOICE_HEADER_IMAGE_URL and Meta template structure.'
     )
   } else {
     console.error('WhatsApp Cloud error:', status, msg)
@@ -251,16 +251,20 @@ function extractTokenFromInvoiceLink(invoiceLink: string): string {
   return invoiceLink.trim()
 }
 
+/** Default header image when Meta template uses IMAGE header (sample image in Meta is not sent by WhatsApp). */
+const DEFAULT_WHATSAPP_INVOICE_HEADER_IMAGE_URL =
+  'https://pub-c59feb6fcc0b46a69749700201f38b8a.r2.dev/location/1772203333797-foxy2hm3.jpeg'
+
 /**
  * Send invoice/receipt link after payment (WhatsApp Cloud API).
  *
  * **Utility template (default)** – see `docs/WHATSAPP_INVOICE_UTILITY_TEMPLATE.md`
+ * Header: IMAGE — we send `WHATSAPP_INVOICE_HEADER_IMAGE_URL` or the default R2 URL every time (required for dynamic media).
  * Body: {{1}} name, {{2}} invoice, {{3}} amount, {{4}} balance, {{5}} appointment date, {{6}} appointment time.
- * No header component is sent — your Meta template must be body + URL button only.
  * Button: dynamic URL suffix — token only (…?token={{1}}), unless WHATSAPP_INVOICE_BUTTON_FULL_URL=true.
  *
  * **Legacy template** – set `WHATSAPP_INVOICE_TEMPLATE_LEGACY=true`
- * Body: Hi {{1}}, your {{2}} bill payment of {{3}} … date {{4}}.
+ * Body: Hi {{1}}, your {{2}} bill payment of {{3}} … date {{4}}. No image header.
  */
 export async function sendInvoiceWhatsApp(
   mobile: string,
@@ -279,7 +283,7 @@ export async function sendInvoiceWhatsApp(
     return { ok: false, error: 'Not configured' }
   }
 
-  const templateName = process.env.WHATSAPP_INVOICE_TEMPLATE_NAME || 'invoice_receipt'
+  const templateName = process.env.WHATSAPP_INVOICE_TEMPLATE_NAME || 'customer_invoice'
   const lang = process.env.WHATSAPP_INVOICE_TEMPLATE_LANG?.trim() || process.env.WHATSAPP_TEMPLATE_LANG || 'en'
   const legacy = process.env.WHATSAPP_INVOICE_TEMPLATE_LEGACY === 'true'
 
@@ -303,6 +307,21 @@ export async function sendInvoiceWhatsApp(
       ],
     })
   } else {
+    const rawHeader = process.env.WHATSAPP_INVOICE_HEADER_IMAGE_URL
+    let headerImageUrl: string
+    if (rawHeader === undefined) {
+      headerImageUrl = DEFAULT_WHATSAPP_INVOICE_HEADER_IMAGE_URL
+    } else if (rawHeader.trim() === '') {
+      headerImageUrl = ''
+    } else {
+      headerImageUrl = rawHeader.trim()
+    }
+    if (headerImageUrl) {
+      components.push({
+        type: 'header',
+        parameters: [{ type: 'image', image: { link: headerImageUrl } }],
+      })
+    }
     const billNo = (options?.billNo || '—').trim().slice(0, 30)
     const balance = options?.balanceDue ?? 0
     const balanceFormatted = `Rs. ${Math.round(balance)}`.slice(0, 30)

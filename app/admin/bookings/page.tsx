@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { format, isToday, isPast, isFuture, startOfDay, parseISO, subDays } from 'date-fns'
-import { CheckCircle, XCircle, Clock, Calendar, ChevronDown, ChevronUp, Phone, User, DollarSign, Banknote, Edit3, Download, Printer } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, Calendar, ChevronDown, ChevronUp, Phone, User, DollarSign, Banknote, Edit3, Download, Printer, Send } from 'lucide-react'
 import { formatTime12h } from '@/lib/formatTime'
 import { setUserRole } from '@/lib/auth'
 
@@ -65,6 +65,9 @@ export default function AdminBookingsPage() {
   const [editOnline, setEditOnline] = useState('')
   const [editCash, setEditCash] = useState('')
   const [paymentSaving, setPaymentSaving] = useState(false)
+  const [sendInvoiceBooking, setSendInvoiceBooking] = useState<Booking | null>(null)
+  const [sendInvoiceMobile, setSendInvoiceMobile] = useState('')
+  const [sendInvoiceSending, setSendInvoiceSending] = useState(false)
 
   useEffect(() => {
     setUserRole('ADMIN')
@@ -299,6 +302,43 @@ export default function AdminBookingsPage() {
       alert(e instanceof Error ? e.message : 'Failed to update payment')
     } finally {
       setPaymentSaving(false)
+    }
+  }
+
+  const openSendInvoiceModal = (booking: Booking) => {
+    setSendInvoiceBooking(booking)
+    setSendInvoiceMobile(booking.user.mobile || '')
+  }
+
+  const closeSendInvoiceModal = () => {
+    setSendInvoiceBooking(null)
+    setSendInvoiceMobile('')
+  }
+
+  const handleSendInvoiceWhatsApp = async () => {
+    if (!sendInvoiceBooking) return
+    const digits = sendInvoiceMobile.replace(/\D/g, '').slice(-10)
+    if (digits.length !== 10) {
+      alert('Enter a valid 10-digit mobile number')
+      return
+    }
+    setSendInvoiceSending(true)
+    try {
+      const res = await fetch(`/api/booking/${sendInvoiceBooking.id}/send-invoice-whatsapp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile: digits }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || 'Failed to send invoice')
+      }
+      closeSendInvoiceModal()
+      alert('Invoice sent on WhatsApp')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to send')
+    } finally {
+      setSendInvoiceSending(false)
     }
   }
 
@@ -708,6 +748,45 @@ export default function AdminBookingsPage() {
                 className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
               >
                 {paymentSaving ? 'Saving...' : paymentModal.mode === 'add_cash' ? 'Record cash' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sendInvoiceBooking && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Send invoice on WhatsApp</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Booking {sendInvoiceBooking.token} — sends the same receipt template as after payment. Change the number if needed.
+            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Mobile (10 digits)</label>
+            <input
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
+              value={sendInvoiceMobile}
+              onChange={(e) => setSendInvoiceMobile(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-6"
+              placeholder="9876543210"
+            />
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={closeSendInvoiceModal}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSendInvoiceWhatsApp}
+                disabled={sendInvoiceSending}
+                className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+              >
+                <Send size={16} />
+                {sendInvoiceSending ? 'Sending…' : 'Send'}
               </button>
             </div>
           </div>
