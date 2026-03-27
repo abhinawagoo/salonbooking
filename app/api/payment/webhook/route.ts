@@ -17,18 +17,32 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 function verifyWebhookAuth(request: Request): boolean {
   const username = process.env.PHONEPE_WEBHOOK_USERNAME
   const password = process.env.PHONEPE_WEBHOOK_PASSWORD
-  if (!username || !password) return false
+  if (!username || !password) {
+    console.warn(
+      '[PhonePe webhook] 401: Set PHONEPE_WEBHOOK_USERNAME and PHONEPE_WEBHOOK_PASSWORD in production (same values as PhonePe Dashboard → Webhook).'
+    )
+    return false
+  }
   const expectedHex = crypto
     .createHash('sha256')
     .update(`${username}:${password}`)
     .digest('hex')
-  const header = request.headers.get('Authorization') ?? ''
+  const header = request.headers.get('Authorization') ?? request.headers.get('authorization') ?? ''
   const receivedHex = header.replace(/^SHA256\s+/i, '').trim().toLowerCase()
-  if (!/^[0-9a-f]{64}$/i.test(receivedHex)) return false
+  if (!/^[0-9a-f]{64}$/i.test(receivedHex)) {
+    console.warn(
+      '[PhonePe webhook] 401: Authorization must be 64 hex chars (SHA256 of username:password). PhonePe Dashboard → Webhook → copy username/password into .env.'
+    )
+    return false
+  }
   const a = Buffer.from(expectedHex, 'hex')
   const b = Buffer.from(receivedHex, 'hex')
   if (a.length !== b.length) return false
-  return crypto.timingSafeEqual(a, b)
+  const ok = crypto.timingSafeEqual(a, b)
+  if (!ok) {
+    console.warn('[PhonePe webhook] 401: Authorization hash does not match PHONEPE_WEBHOOK_USERNAME / PHONEPE_WEBHOOK_PASSWORD.')
+  }
+  return ok
 }
 
 export async function POST(request: Request) {
@@ -82,7 +96,12 @@ export async function POST(request: Request) {
       if (isSuccess && process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID) {
         const b = await prisma.booking.findUnique({
           where: { id: bookingId },
-          select: { token: true, user: { select: { name: true, mobile: true } } },
+          select: {
+            token: true,
+            date: true,
+            timeSlot: true,
+            user: { select: { name: true, mobile: true } },
+          },
         })
         if (b?.token && b?.user?.mobile) {
           const invoiceLink = getPublicInvoiceUrl(b.token)
@@ -96,6 +115,8 @@ export async function POST(request: Request) {
                 billNo,
                 balanceDue,
                 bookingToken: b.token,
+                appointmentDate: b.date,
+                appointmentTimeSlot: b.timeSlot,
               })
             } catch (e) {
               console.error('Invoice WhatsApp failed:', e)

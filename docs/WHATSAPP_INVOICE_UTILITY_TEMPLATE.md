@@ -10,6 +10,8 @@
 | Body {{2}} | Invoice | Bill number | `BILL-000001` |
 | Body {{3}} | Amount | Paid amount | `Rs. 350` |
 | Body {{4}} | Balance | Balance due | `Rs. 0` |
+| Body {{5}} | Appointment date | From booking (DD/MM/YYYY) | `27/03/2026` |
+| Body {{6}} | Appointment time | From booking slot (12h) | `2:30 PM` |
 | Button {{1}} | Token | **Booking token only** (not full URL) | `T9KFZHT0978MUGTN` |
 
 In Meta, the button URL must be:
@@ -20,17 +22,10 @@ Where `{{1}}` is replaced by the token value. The app sends **only** the token s
 
 ---
 
-## Header: document vs image
+## No header (image / PDF)
 
-- If your **approved template** uses a **Document** header (PDF) that is **static** (you uploaded the sample in Meta and there is **no** variable in the header):  
-  **Do not** set `WHATSAPP_INVOICE_HEADER_DOCUMENT_URL` in production. Meta will show your static PDF; the API must **not** send a `header` document component (or it can fail).
-
-- If Meta expects a **dynamic** document in the header (variable in header):  
-  Set `WHATSAPP_INVOICE_HEADER_DOCUMENT_URL` to a **public HTTPS** PDF URL and `WHATSAPP_INVOICE_HEADER_DOCUMENT_FILENAME` (e.g. `Receipt.pdf`).
-
-- If the template uses **Image** header instead: set `WHATSAPP_INVOICE_HEADER_IMAGE_URL` only if your template expects dynamic image from API; **do not** set both document and image.
-
-**Rule:** Match what Meta approved — header type (none / static / dynamic) must match what the API sends.
+The app **does not** send any `header` component for invoice messages — only **body** variables and the **URL** button.  
+In Meta, create the template **without** a header (body + button only) so it matches the API.
 
 ---
 
@@ -52,9 +47,6 @@ Set these for **Production**:
 
 | Variable | When |
 |----------|------|
-| `WHATSAPP_INVOICE_HEADER_DOCUMENT_URL` | Only if template has **dynamic** document header |
-| `WHATSAPP_INVOICE_HEADER_DOCUMENT_FILENAME` | Filename shown in WhatsApp (default `Receipt.pdf`) |
-| `WHATSAPP_INVOICE_HEADER_IMAGE_URL` | Only if template has **dynamic** image header |
 | `WHATSAPP_INVOICE_BUTTON_FULL_URL` | `true` only if your Meta button expects the **full** URL instead of token |
 
 After changes, **redeploy**.

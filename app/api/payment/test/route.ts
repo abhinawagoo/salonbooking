@@ -23,7 +23,16 @@ export async function POST(request: Request) {
 
     const payment = await prisma.payment.findFirst({
       where: { bookingId },
-      include: { booking: { select: { token: true, user: { select: { name: true, mobile: true } } } } },
+      include: {
+        booking: {
+          select: {
+            token: true,
+            date: true,
+            timeSlot: true,
+            user: { select: { name: true, mobile: true } },
+          },
+        },
+      },
     })
     if (!payment) {
       return NextResponse.json({ error: 'Payment not found' }, { status: 404 })
@@ -60,6 +69,8 @@ export async function POST(request: Request) {
               billNo,
               balanceDue,
               bookingToken: b.token,
+              appointmentDate: b.date,
+              appointmentTimeSlot: b.timeSlot,
             })
           } catch (e) {
             console.error('Invoice WhatsApp failed:', e)

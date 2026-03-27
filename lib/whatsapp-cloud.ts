@@ -16,21 +16,37 @@ function getConfig() {
   return { token, phoneId }
 }
 
-function logWhatsAppError(status: number, msg: string, to: string) {
+type WhatsAppErrorContext = 'invoice' | 'booking' | 'otp' | 'staff' | 'generic'
+
+function logWhatsAppError(status: number, msg: string, to: string, context: WhatsAppErrorContext = 'generic') {
   if (msg.includes('131030')) {
     console.warn(
       `[WhatsApp #131030] Recipient ${to} not in allowed list. ` +
         'In Development mode, add numbers at: Meta Developer Console → WhatsApp → API Setup → "To" field → Manage phone number list'
     )
   } else if (msg.includes('132001')) {
-    console.warn(
-      `[WhatsApp #132001] Template not found. Check WHATSAPP_BOOKING_TEMPLATE_NAME / WHATSAPP_OTP_TEMPLATE_NAME and language code in Meta.`
-    )
+    if (context === 'invoice') {
+      console.warn(
+        `[WhatsApp #132001] Invoice template not found or wrong language. Set WHATSAPP_INVOICE_TEMPLATE_NAME to match Meta exactly, ` +
+          'and WHATSAPP_INVOICE_TEMPLATE_LANG or WHATSAPP_TEMPLATE_LANG to the template language (e.g. en_US — must match Meta Template Library).'
+      )
+    } else if (context === 'otp') {
+      console.warn(
+        `[WhatsApp #132001] OTP template not found. Check WHATSAPP_OTP_TEMPLATE_NAME and WHATSAPP_TEMPLATE_LANG vs Meta (e.g. en_US).`
+      )
+    } else if (context === 'staff') {
+      console.warn(
+        `[WhatsApp #132001] Staff booking template not found. Check WHATSAPP_STAFF_BOOKING_TEMPLATE_NAME and WHATSAPP_TEMPLATE_LANG vs Meta.`
+      )
+    } else {
+      console.warn(
+        `[WhatsApp #132001] Template not found. Check WHATSAPP_BOOKING_TEMPLATE_NAME / WHATSAPP_OTP_TEMPLATE_NAME and language code in Meta (e.g. en_US).`
+      )
+    }
   } else if (msg.includes('132012')) {
     console.warn(
-      `[WhatsApp #132012] Template parameter/header mismatch. If the error mentions DOCUMENT header: ` +
-        'your Meta template has a dynamic PDF header — set WHATSAPP_INVOICE_HEADER_DOCUMENT_URL (HTTPS) or set WHATSAPP_INVOICE_META_HAS_HEADER_DOCUMENT=true with NEXT_PUBLIC_APP_URL (uses /invoice-header-placeholder.pdf). ' +
-        'Or remove the document header from the template in Meta.'
+      `[WhatsApp #132012] Template parameter/header mismatch. Invoice sends body + button only (no header). ` +
+        'In Meta, remove any header from the template or ensure body variable count matches (6 body vars + button).'
     )
   } else {
     console.error('WhatsApp Cloud error:', status, msg)
@@ -73,7 +89,7 @@ export async function sendHelloWorldWhatsApp(mobile: string): Promise<{ ok: bool
     const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
     if (!res.ok) {
       const msg = data.error?.message || res.statusText
-      logWhatsAppError(res.status, msg, to)
+      logWhatsAppError(res.status, msg, to, 'generic')
       return { ok: false, error: msg }
     }
     return { ok: true }
@@ -131,7 +147,7 @@ export async function sendWhatsAppTemplate(
     const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
     if (!res.ok) {
       const msg = data.error?.message || res.statusText
-      logWhatsAppError(res.status, msg, to)
+      logWhatsAppError(res.status, msg, to, 'generic')
       return { ok: false, error: msg }
     }
     return { ok: true }
@@ -198,7 +214,7 @@ export async function sendOtpWhatsApp(mobile: string, otp: string): Promise<{ ok
     const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
     if (!res.ok) {
       const msg = data.error?.message || res.statusText
-      logWhatsAppError(res.status, msg, to)
+      logWhatsAppError(res.status, msg, to, 'otp')
       return { ok: false, error: msg }
     }
     return { ok: true }
@@ -213,6 +229,10 @@ export type SendInvoiceWhatsAppOptions = {
   billNo?: string
   /** Outstanding balance in INR (utility template {{4}}). Defaults to 0 when omitted. */
   balanceDue?: number
+  /** Booking appointment date for body {{5}} (DD/MM/YYYY). */
+  appointmentDate?: Date | string
+  /** Booking time slot e.g. "14:30" for body {{6}} (shown as 12h). */
+  appointmentTimeSlot?: string
   /**
    * Booking token for button {{1}} when Meta URL is like ...?token={{1}} (utility template).
    * If omitted, token is parsed from `invoiceLink` query string.
@@ -235,7 +255,8 @@ function extractTokenFromInvoiceLink(invoiceLink: string): string {
  * Send invoice/receipt link after payment (WhatsApp Cloud API).
  *
  * **Utility template (default)** – see `docs/WHATSAPP_INVOICE_UTILITY_TEMPLATE.md`
- * Body: {{1}} name, {{2}} invoice, {{3}} amount, {{4}} balance.
+ * Body: {{1}} name, {{2}} invoice, {{3}} amount, {{4}} balance, {{5}} appointment date, {{6}} appointment time.
+ * No header component is sent — your Meta template must be body + URL button only.
  * Button: dynamic URL suffix — token only (…?token={{1}}), unless WHATSAPP_INVOICE_BUTTON_FULL_URL=true.
  *
  * **Legacy template** – set `WHATSAPP_INVOICE_TEMPLATE_LEGACY=true`
@@ -259,18 +280,8 @@ export async function sendInvoiceWhatsApp(
   }
 
   const templateName = process.env.WHATSAPP_INVOICE_TEMPLATE_NAME || 'invoice_receipt'
-  const lang = process.env.WHATSAPP_TEMPLATE_LANG || 'en'
+  const lang = process.env.WHATSAPP_INVOICE_TEMPLATE_LANG?.trim() || process.env.WHATSAPP_TEMPLATE_LANG || 'en'
   const legacy = process.env.WHATSAPP_INVOICE_TEMPLATE_LEGACY === 'true'
-  const headerImageUrl = process.env.WHATSAPP_INVOICE_HEADER_IMAGE_URL?.trim()
-  const appBase = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
-  const placeholderDoc =
-    appBase && process.env.WHATSAPP_INVOICE_META_HAS_HEADER_DOCUMENT === 'true'
-      ? `${appBase}/invoice-header-placeholder.pdf`
-      : ''
-  const headerDocumentUrl =
-    process.env.WHATSAPP_INVOICE_HEADER_DOCUMENT_URL?.trim() || placeholderDoc || ''
-  const headerDocumentFilename =
-    process.env.WHATSAPP_INVOICE_HEADER_DOCUMENT_FILENAME?.trim() || 'Receipt.pdf'
 
   const nameParam = (customerName || 'Customer').trim().slice(0, 30)
   const amountFormatted = `Rs. ${Math.round(amountPaid)}`.slice(0, 30)
@@ -278,24 +289,6 @@ export async function sendInvoiceWhatsApp(
   const apiUrl = `${GRAPH_API}/${phoneId}/messages`
 
   const components: Record<string, unknown>[] = []
-
-  // Header: document (PDF) takes precedence over image — must match Meta template header type
-  if (!legacy && headerDocumentUrl) {
-    components.push({
-      type: 'header',
-      parameters: [
-        {
-          type: 'document',
-          document: { link: headerDocumentUrl, filename: headerDocumentFilename },
-        },
-      ],
-    })
-  } else if (!legacy && headerImageUrl) {
-    components.push({
-      type: 'header',
-      parameters: [{ type: 'image', image: { link: headerImageUrl } }],
-    })
-  }
 
   if (legacy) {
     const billType = (process.env.WHATSAPP_INVOICE_BILL_TYPE || 'booking for Shahnaz Salon Sasaram').trim().slice(0, 30)
@@ -313,6 +306,15 @@ export async function sendInvoiceWhatsApp(
     const billNo = (options?.billNo || '—').trim().slice(0, 30)
     const balance = options?.balanceDue ?? 0
     const balanceFormatted = `Rs. ${Math.round(balance)}`.slice(0, 30)
+    const apptDateStr = options?.appointmentDate
+      ? typeof options.appointmentDate === 'string'
+        ? options.appointmentDate.slice(0, 10)
+        : options.appointmentDate.toISOString().slice(0, 10)
+      : ''
+    const appointmentDateDisplay = apptDateStr ? formatAppointmentDateShort(apptDateStr).slice(0, 30) : '—'
+    const appointmentTimeDisplay = options?.appointmentTimeSlot
+      ? formatTime12h(options.appointmentTimeSlot).slice(0, 30)
+      : '—'
     components.push({
       type: 'body',
       parameters: [
@@ -320,6 +322,8 @@ export async function sendInvoiceWhatsApp(
         { type: 'text', text: billNo },
         { type: 'text', text: amountFormatted },
         { type: 'text', text: balanceFormatted },
+        { type: 'text', text: appointmentDateDisplay },
+        { type: 'text', text: appointmentTimeDisplay },
       ],
     })
   }
@@ -366,7 +370,7 @@ export async function sendInvoiceWhatsApp(
       const msg = data.error?.message || res.statusText
       console.error('[WhatsApp invoice] Error:', msg, '| Full:', JSON.stringify(data))
       if (data.error?.error_data?.details) console.error('[WhatsApp] Details:', data.error.error_data.details)
-      logWhatsAppError(res.status, msg, to)
+      logWhatsAppError(res.status, msg, to, 'invoice')
       return { ok: false, error: msg }
     }
     return { ok: true }
@@ -374,6 +378,16 @@ export async function sendInvoiceWhatsApp(
     console.error('WhatsApp Cloud invoice template failed:', e)
     return { ok: false, error: String(e) }
   }
+}
+
+/** DD/MM/YYYY for invoice body {{5}} */
+function formatAppointmentDateShort(yyyyMmDd: string): string {
+  const d = new Date(yyyyMmDd + 'T12:00:00')
+  if (Number.isNaN(d.getTime())) return yyyyMmDd.slice(0, 10)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  return `${dd}/${mm}/${yyyy}`
 }
 
 /** Format payment date for WhatsApp template (e.g. "December 31, 2025"). */
@@ -474,7 +488,7 @@ async function sendWhatsAppTemplateBodyOnly(
     const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
     if (!res.ok) {
       const msg = data.error?.message || res.statusText
-      logWhatsAppError(res.status, msg, to)
+      logWhatsAppError(res.status, msg, to, 'staff')
       return { ok: false, error: msg }
     }
     return { ok: true }
@@ -555,7 +569,7 @@ async function sendWhatsAppTemplateWithHeader(
     const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
     if (!res.ok) {
       const msg = data.error?.message || res.statusText
-      logWhatsAppError(res.status, msg, to)
+      logWhatsAppError(res.status, msg, to, 'booking')
       return { ok: false, error: msg }
     }
     return { ok: true }

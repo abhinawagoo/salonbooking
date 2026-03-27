@@ -45,7 +45,8 @@ Follow these steps to get your salon booking app live. Your repo is already on G
 | `WHATSAPP_TEMPLATE_LANG` | Must match template language in Meta (`en` or `en_US`) |
 | `WHATSAPP_INVOICE_TEMPLATE_LEGACY` | `false` for the Shahnaz invoice template (see `docs/WHATSAPP_INVOICE_UTILITY_TEMPLATE.md`) |
 | `WHATSAPP_INVOICE_BUTTON_FULL_URL` | `false` — button sends **token** only when Meta URL is `...?token={{1}}` |
-| `WHATSAPP_INVOICE_HEADER_DOCUMENT_URL` | Only if Meta template expects **dynamic** PDF header; omit if header is static in Meta |
+
+Invoice template: **body + URL button only** (no image/PDF header from the app). See `docs/WHATSAPP_INVOICE_UTILITY_TEMPLATE.md`.
 
 Optional later: R2, etc. (see `.env.example`).
 
