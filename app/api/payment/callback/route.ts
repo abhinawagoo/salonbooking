@@ -4,6 +4,7 @@ import { getPhonePeOrderStatus } from '@/lib/phonepe'
 import { sendInvoiceWhatsApp } from '@/lib/whatsapp-cloud'
 import { getOrAssignBillNo } from '@/lib/billNo'
 import { getPublicInvoiceUrl } from '@/lib/invoiceUrl'
+import { notifyStaffBookingManagersAfterPayment } from '@/lib/notify'
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')
 
@@ -41,9 +42,10 @@ export async function GET(request: Request) {
     }
 
     const isSuccess = state === 'COMPLETED' || state === 'PAID'
+    const alreadyCompleted = payment.paymentStatus === 'COMPLETED'
     if (isSuccess) {
       // Idempotent: only update if not already completed (avoids double-count when webhook + redirect both fire)
-      if (payment.paymentStatus !== 'COMPLETED') {
+      if (!alreadyCompleted) {
         const paidAmount = payment.amount
         await prisma.payment.update({
           where: { id: payment.id },
@@ -56,10 +58,20 @@ export async function GET(request: Request) {
           },
         })
       }
-      // Send invoice link to customer via WhatsApp Cloud API (direct, no BSP)
+      // Staff + customer invoice on first completion only (webhook may have already run)
       const token = payment.booking?.token
       const user = payment.booking?.user
-      if (token && user?.mobile && process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID) {
+      const waConfigured = !!(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID)
+      if (isSuccess && !alreadyCompleted && waConfigured) {
+        void (async () => {
+          try {
+            await notifyStaffBookingManagersAfterPayment(bookingId)
+          } catch (e) {
+            console.error('Staff booking WhatsApp failed:', e)
+          }
+        })()
+      }
+      if (isSuccess && !alreadyCompleted && token && user?.mobile && waConfigured) {
         const invoiceLink = getPublicInvoiceUrl(token)
         const amountPaid = payment.amount
         void (async () => {

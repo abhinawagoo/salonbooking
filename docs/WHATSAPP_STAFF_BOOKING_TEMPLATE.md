@@ -1,8 +1,10 @@
 # Staff booking alert (WhatsApp template)
 
-When a booking is created, the app can notify managers using the WhatsApp Cloud API template **`staff_booking_alert`** (override with `WHATSAPP_STAFF_BOOKING_TEMPLATE_NAME` in `.env`).
+After **payment completes successfully** (first time the booking is marked paid), the app notifies managers using the WhatsApp Cloud API template **`staff_booking_alert`** (override with `WHATSAPP_STAFF_BOOKING_TEMPLATE_NAME` in `.env`). The same moment the customer receives the **invoice_receipt** message (payment callback, webhook, or test payment).
 
-Configure **manager numbers per location** in **Admin → Locations** → edit a location → **Staff WhatsApp — booking alerts** (one 10-digit Indian mobile per line). Only staff listed on **that** location receive alerts when a customer books **that** branch. If the list is empty for that location, the app falls back to notifying users with **Staff** or **Admin** role (same as before).
+Configure **manager numbers per location** in **Admin → Locations** → edit a location → **Staff WhatsApp — booking alerts** (one 10-digit Indian mobile per line). Only staff listed on **that** location receive alerts for bookings **at that** branch. If the list is empty, the app falls back to users with **Staff** or **Admin** role (they get the regular **booking_confirmation** template instead).
+
+Set `NOTIFY_STAFF_ON_BOOKING=false` in `.env` to disable all staff booking WhatsApp (customer invoice is unchanged).
 
 ## Create the template in Meta
 

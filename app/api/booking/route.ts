@@ -3,8 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getAuthFromCookie } from '@/lib/auth-jwt'
 import { AUTH_DISABLED_FOR_NOW } from '@/lib/auth'
 import { getSlotsInRange, isWithinClosingTime, MAX_BOOKINGS_PER_SLOT, parseBusinessHours, getDayConfig } from '@/lib/slots'
-import { buildBookingNotificationPayload, notifyStaffManagersForBooking, sendBookingNotification } from '@/lib/notify'
-import { parseStaffBookingNotifyPhones } from '@/lib/phone'
+import { buildBookingNotificationPayload, sendBookingNotification } from '@/lib/notify'
 import { normalizeMobileForDb } from '@/lib/phone'
 import { createPhonePePayment } from '@/lib/phonepe'
 import { nanoid } from 'nanoid'
@@ -269,35 +268,8 @@ export async function POST(request: Request) {
     sendBookingNotification(user.mobile, payload, 'customer').catch((e) =>
       console.error('Notify customer failed:', e)
     )
-    // Skip staff notifications in dev when NOTIFY_STAFF_ON_BOOKING=false (avoids #131030 for seeded staff numbers)
-    const notifyStaff = process.env.NOTIFY_STAFF_ON_BOOKING !== 'false'
-    if (notifyStaff) {
-      const locStaffPhones = parseStaffBookingNotifyPhones(location.staffBookingNotifyPhones ?? undefined)
-      if (locStaffPhones.length > 0) {
-        notifyStaffManagersForBooking(locStaffPhones, {
-          locationName: location.name,
-          customerName: user.name,
-          customerMobile: user.mobile,
-          dateStr: date,
-          timeSlot,
-          servicesSummary: payload.servicesSummary,
-          totalAmount: totalAmountForNotify,
-        }).catch((e) => console.error('Staff booking notify failed:', e))
-      } else {
-        prisma.user
-          .findMany({ where: { role: { in: ['STAFF', 'ADMIN'] } }, select: { mobile: true } })
-          .then((staff) => {
-            staff.forEach((s) => {
-              if (s.mobile && s.mobile !== user.mobile) {
-                sendBookingNotification(s.mobile, payload, 'staff').catch((e) =>
-                  console.error('Notify staff failed:', e)
-                )
-              }
-            })
-          })
-          .catch((e) => console.error('Fetch staff for notify failed:', e))
-      }
-    }
+    // Staff WhatsApp (staff_booking_alert) is sent after payment succeeds — see notifyStaffBookingManagersAfterPayment in payment callback/webhook.
+
     
     return NextResponse.json({
       bookingId: booking.id,

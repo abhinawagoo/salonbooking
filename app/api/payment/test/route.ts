@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { sendInvoiceWhatsApp } from '@/lib/whatsapp-cloud'
 import { getOrAssignBillNo } from '@/lib/billNo'
 import { getPublicInvoiceUrl } from '@/lib/invoiceUrl'
+import { notifyStaffBookingManagersAfterPayment } from '@/lib/notify'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
@@ -74,6 +75,11 @@ export async function POST(request: Request) {
             })
           } catch (e) {
             console.error('Invoice WhatsApp failed:', e)
+          }
+          try {
+            await notifyStaffBookingManagersAfterPayment(bookingId)
+          } catch (e) {
+            console.error('Staff booking WhatsApp failed:', e)
           }
         })()
       }

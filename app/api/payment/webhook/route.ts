@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { sendInvoiceWhatsApp } from '@/lib/whatsapp-cloud'
 import { getOrAssignBillNo } from '@/lib/billNo'
 import { getPublicInvoiceUrl } from '@/lib/invoiceUrl'
+import { notifyStaffBookingManagersAfterPayment } from '@/lib/notify'
 import crypto from 'crypto'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
@@ -92,8 +93,17 @@ export async function POST(request: Request) {
           }),
         },
       })
-      // Send invoice link to customer via WhatsApp Cloud API (direct, no BSP)
-      if (isSuccess && process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID) {
+      const waConfigured = !!(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID)
+      if (isSuccess && !alreadyCompleted && waConfigured) {
+        void (async () => {
+          try {
+            await notifyStaffBookingManagersAfterPayment(bookingId)
+          } catch (e) {
+            console.error('Staff booking WhatsApp failed:', e)
+          }
+        })()
+      }
+      if (isSuccess && !alreadyCompleted && waConfigured) {
         const b = await prisma.booking.findUnique({
           where: { id: bookingId },
           select: {
