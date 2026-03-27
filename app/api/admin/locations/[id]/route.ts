@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { deleteFromR2ByUrl } from '@/lib/r2'
+import { parseStaffBookingNotifyPhones } from '@/lib/phone'
 
 /** PATCH: Update location name and address (slug left unchanged) */
 export async function PATCH(
@@ -20,14 +21,31 @@ export async function PATCH(
     const closedDatesJson = body.closedDatesJson !== undefined && body.closedDatesJson !== null
       ? String(body.closedDatesJson).trim() || null
       : undefined
+    let staffBookingNotifyPhones: string | null | undefined
+    if (body.staffBookingNotifyPhones !== undefined) {
+      const parsed =
+        typeof body.staffBookingNotifyPhones === 'string'
+          ? parseStaffBookingNotifyPhones(body.staffBookingNotifyPhones)
+          : parseStaffBookingNotifyPhones(JSON.stringify(body.staffBookingNotifyPhones))
+      staffBookingNotifyPhones = JSON.stringify(parsed)
+    }
 
-    const updateData: { name?: string; address?: string | null; mobile?: string | null; imageUrl?: string | null; businessHoursJson?: string | null; closedDatesJson?: string | null } = {}
+    const updateData: {
+      name?: string
+      address?: string | null
+      mobile?: string | null
+      imageUrl?: string | null
+      businessHoursJson?: string | null
+      closedDatesJson?: string | null
+      staffBookingNotifyPhones?: string | null
+    } = {}
     if (name) updateData.name = name
     if (address !== undefined) updateData.address = address
     if (mobile !== undefined) updateData.mobile = mobile
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl
     if (businessHoursJson !== undefined) updateData.businessHoursJson = businessHoursJson
     if (closedDatesJson !== undefined) updateData.closedDatesJson = closedDatesJson
+    if (staffBookingNotifyPhones !== undefined) updateData.staffBookingNotifyPhones = staffBookingNotifyPhones
 
     if (imageUrl !== undefined) {
       const existing = await prisma.location.findUnique({

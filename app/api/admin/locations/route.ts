@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { parseStaffBookingNotifyPhones } from '@/lib/phone'
 
 const MAX_LOCATIONS = 2
 
@@ -40,6 +41,14 @@ export async function POST(request: NextRequest) {
     const closedDatesJson = body.closedDatesJson !== undefined && body.closedDatesJson !== null
       ? String(body.closedDatesJson).trim() || null
       : null
+    let staffBookingNotifyPhones: string | null = null
+    if (body.staffBookingNotifyPhones !== undefined) {
+      const parsed =
+        typeof body.staffBookingNotifyPhones === 'string'
+          ? parseStaffBookingNotifyPhones(body.staffBookingNotifyPhones)
+          : parseStaffBookingNotifyPhones(JSON.stringify(body.staffBookingNotifyPhones))
+      staffBookingNotifyPhones = JSON.stringify(parsed)
+    }
     if (!name) {
       return NextResponse.json(
         { error: 'Location name is required' },
@@ -62,6 +71,7 @@ export async function POST(request: NextRequest) {
         imageUrl,
         businessHoursJson,
         closedDatesJson,
+        staffBookingNotifyPhones,
         isActive: true,
       },
     })

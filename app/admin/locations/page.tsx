@@ -25,6 +25,8 @@ interface Location {
   isActive: boolean
   businessHoursJson?: string | null
   closedDatesJson?: string | null
+  /** JSON array string of 10-digit mobiles for this location's staff WhatsApp alerts */
+  staffBookingNotifyPhones?: string | null
 }
 
 export default function AdminLocationsPage() {
@@ -38,7 +40,15 @@ export default function AdminLocationsPage() {
     openTime: '09:00',
     closeTime: '18:00',
   }))
-  const [form, setForm] = useState({ name: '', address: '', mobile: '', imageUrl: '', businessHours: defaultBusinessHours, closedDates: [] as string[] })
+  const [form, setForm] = useState({
+    name: '',
+    address: '',
+    mobile: '',
+    staffBookingNotifyPhones: '',
+    imageUrl: '',
+    businessHours: defaultBusinessHours,
+    closedDates: [] as string[],
+  })
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
 
@@ -61,7 +71,15 @@ export default function AdminLocationsPage() {
 
   const openAdd = () => {
     setEditing(null)
-    setForm({ name: '', address: '', mobile: '', imageUrl: '', businessHours: defaultBusinessHours, closedDates: [] })
+    setForm({
+      name: '',
+      address: '',
+      mobile: '',
+      staffBookingNotifyPhones: '',
+      imageUrl: '',
+      businessHours: defaultBusinessHours,
+      closedDates: [],
+    })
     setModal('add')
   }
 
@@ -95,10 +113,20 @@ export default function AdminLocationsPage() {
         /* use empty */
       }
     }
+    let staffNotifyText = ''
+    if (loc.staffBookingNotifyPhones?.trim()) {
+      try {
+        const arr = JSON.parse(loc.staffBookingNotifyPhones) as unknown
+        staffNotifyText = Array.isArray(arr) ? arr.filter((x): x is string => typeof x === 'string').join('\n') : ''
+      } catch {
+        staffNotifyText = loc.staffBookingNotifyPhones
+      }
+    }
     setForm({
       name: loc.name,
       address: loc.address || '',
       mobile: loc.mobile || '',
+      staffBookingNotifyPhones: staffNotifyText,
       imageUrl: loc.imageUrl || '',
       businessHours,
       closedDates,
@@ -163,6 +191,7 @@ export default function AdminLocationsPage() {
         name,
         address: form.address.trim() || undefined,
         mobile: form.mobile.trim() || undefined,
+        staffBookingNotifyPhones: form.staffBookingNotifyPhones,
         imageUrl: form.imageUrl.trim() || undefined,
         businessHoursJson: JSON.stringify(form.businessHours),
         closedDatesJson: JSON.stringify(form.closedDates),
@@ -318,6 +347,20 @@ export default function AdminLocationsPage() {
                   onChange={(e) => setForm((f) => ({ ...f, mobile: e.target.value }))}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="e.g. 9876543210"
+                />
+                <p className="text-xs text-gray-500 mt-1">Shown on bills for this branch.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Staff WhatsApp — booking alerts (optional)</label>
+                <p className="text-xs text-gray-500 mb-2">
+                  When someone books at <strong>this</strong> location only, we send your approved WhatsApp template to these numbers (customer name, mobile, date, time, services, amount). One 10-digit Indian mobile per line. Leave empty to use Staff/Admin users in the system instead.
+                </p>
+                <textarea
+                  value={form.staffBookingNotifyPhones}
+                  onChange={(e) => setForm((f) => ({ ...f, staffBookingNotifyPhones: e.target.value }))}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm"
+                  placeholder={'9876543210\n9876543211'}
                 />
               </div>
               <div>

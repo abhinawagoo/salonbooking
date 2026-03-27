@@ -26,6 +26,12 @@ function logWhatsAppError(status: number, msg: string, to: string) {
     console.warn(
       `[WhatsApp #132001] Template not found. Check WHATSAPP_BOOKING_TEMPLATE_NAME / WHATSAPP_OTP_TEMPLATE_NAME and language code in Meta.`
     )
+  } else if (msg.includes('132012')) {
+    console.warn(
+      `[WhatsApp #132012] Template parameter/header mismatch. If the error mentions DOCUMENT header: ` +
+        'your Meta template has a dynamic PDF header — set WHATSAPP_INVOICE_HEADER_DOCUMENT_URL (HTTPS) or set WHATSAPP_INVOICE_META_HAS_HEADER_DOCUMENT=true with NEXT_PUBLIC_APP_URL (uses /invoice-header-placeholder.pdf). ' +
+        'Or remove the document header from the template in Meta.'
+    )
   } else {
     console.error('WhatsApp Cloud error:', status, msg)
   }
@@ -256,7 +262,13 @@ export async function sendInvoiceWhatsApp(
   const lang = process.env.WHATSAPP_TEMPLATE_LANG || 'en'
   const legacy = process.env.WHATSAPP_INVOICE_TEMPLATE_LEGACY === 'true'
   const headerImageUrl = process.env.WHATSAPP_INVOICE_HEADER_IMAGE_URL?.trim()
-  const headerDocumentUrl = process.env.WHATSAPP_INVOICE_HEADER_DOCUMENT_URL?.trim()
+  const appBase = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
+  const placeholderDoc =
+    appBase && process.env.WHATSAPP_INVOICE_META_HAS_HEADER_DOCUMENT === 'true'
+      ? `${appBase}/invoice-header-placeholder.pdf`
+      : ''
+  const headerDocumentUrl =
+    process.env.WHATSAPP_INVOICE_HEADER_DOCUMENT_URL?.trim() || placeholderDoc || ''
   const headerDocumentFilename =
     process.env.WHATSAPP_INVOICE_HEADER_DOCUMENT_FILENAME?.trim() || 'Receipt.pdf'
 
@@ -385,6 +397,93 @@ function formatDateLong(dateStr: string): string {
  * Params: {{1}} name, {{2}} services, {{3}} date (December 31, 2025), {{4}} time (1:00 PM).
  * When USE_WHATSAPP_HELLO_WORLD_TEST=true, sends hello_world instead (for testing before business verification).
  */
+export type StaffBookingAlertParams = {
+  locationName: string
+  customerName: string
+  customerMobile: string
+  dateDisplay: string
+  timeDisplay: string
+  servicesSummary: string
+  amountDisplay: string
+}
+
+/**
+ * Notify salon managers (numbers from Admin → Customize) when a booking is confirmed.
+ * Create template in Meta (e.g. name `staff_booking_alert`, 7 body variables) — see `docs/WHATSAPP_STAFF_BOOKING_TEMPLATE.md`.
+ */
+export async function sendStaffBookingAlertWhatsApp(
+  mobile: string,
+  p: StaffBookingAlertParams
+): Promise<{ ok: boolean; error?: string }> {
+  if (process.env.USE_WHATSAPP_HELLO_WORLD_TEST === 'true') {
+    return sendHelloWorldWhatsApp(mobile)
+  }
+  const templateName = process.env.WHATSAPP_STAFF_BOOKING_TEMPLATE_NAME || 'staff_booking_alert'
+  const slice = (s: string, n: number) => (s || '').trim().slice(0, n)
+  return sendWhatsAppTemplateBodyOnly(mobile, templateName, [
+    slice(p.locationName, 60),
+    slice(p.customerName, 30),
+    slice(p.customerMobile, 20),
+    slice(p.dateDisplay, 30),
+    slice(p.timeDisplay, 30),
+    slice(p.servicesSummary, 80),
+    slice(p.amountDisplay, 30),
+  ])
+}
+
+async function sendWhatsAppTemplateBodyOnly(
+  mobile: string,
+  templateName: string,
+  bodyParams: string[],
+  options?: { languageCode?: string }
+): Promise<{ ok: boolean; error?: string }> {
+  const { token, phoneId } = getConfig()
+  if (!token || !phoneId) {
+    console.warn('WhatsApp Cloud: WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID not set')
+    return { ok: false, error: 'Not configured' }
+  }
+
+  const to = toE164(mobile)
+  const url = `${GRAPH_API}/${phoneId}/messages`
+
+  const body = {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'template',
+    template: {
+      name: templateName,
+      language: { code: options?.languageCode || process.env.WHATSAPP_TEMPLATE_LANG || 'en' },
+      components: [
+        {
+          type: 'body',
+          parameters: bodyParams.map((text) => ({ type: 'text', text })),
+        },
+      ],
+    },
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    })
+    const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+    if (!res.ok) {
+      const msg = data.error?.message || res.statusText
+      logWhatsAppError(res.status, msg, to)
+      return { ok: false, error: msg }
+    }
+    return { ok: true }
+  } catch (e) {
+    console.error('WhatsApp Cloud staff booking template failed:', e)
+    return { ok: false, error: String(e) }
+  }
+}
+
 export async function sendBookingConfirmationWhatsApp(
   mobile: string,
   customerName: string,

@@ -34,3 +34,27 @@ export function toE164(mobile: string): string {
   }
   return digits
 }
+
+/** Parse JSON array or newline/comma-separated list into unique 10-digit Indian mobiles (staff booking alerts per location). */
+export function parseStaffBookingNotifyPhones(raw: string | null | undefined): string[] {
+  if (!raw?.trim()) return []
+  try {
+    const arr = JSON.parse(raw) as unknown
+    if (Array.isArray(arr)) {
+      const out = new Set<string>()
+      for (const x of arr) {
+        const m = normalizeMobileForDb(String(x))
+        if (m.length === 10) out.add(m)
+      }
+      return [...out]
+    }
+  } catch {
+    // treat as plain text below
+  }
+  const out = new Set<string>()
+  for (const line of raw.split(/[\n,;]+/)) {
+    const m = normalizeMobileForDb(line.trim())
+    if (m.length === 10) out.add(m)
+  }
+  return [...out]
+}

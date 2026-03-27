@@ -95,6 +95,7 @@ model Location {
   isActive           Boolean   @default(true)
   businessHoursJson  String?   // JSON: [{ dayOfWeek: 0-6, isOpen: bool, openTime?: "09:00", closeTime?: "18:00" }]
   closedDatesJson    String?   // JSON: ["2025-01-01", "2025-12-25"] - specific dates closed (festivals, holidays, etc.)
+  staffBookingNotifyPhones String? // JSON array of 10-digit mobiles — WhatsApp booking alerts for this location only
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   

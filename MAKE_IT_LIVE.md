@@ -47,7 +47,7 @@ Follow these steps to get your salon booking app live. Your repo is already on G
 | `WHATSAPP_INVOICE_BUTTON_FULL_URL` | `false` — button sends **token** only when Meta URL is `...?token={{1}}` |
 | `WHATSAPP_INVOICE_HEADER_DOCUMENT_URL` | Only if Meta template expects **dynamic** PDF header; omit if header is static in Meta |
 
-Optional later: R2, MSG91, etc. (see `.env.example`).
+Optional later: R2, etc. (see `.env.example`).
 
 **Invoice WhatsApp after payment:** set `NEXT_PUBLIC_APP_URL` to your real domain (e.g. `https://shahnazsalonsasaram.com`) so invoice links in WhatsApp are correct. Full checklist: `docs/WHATSAPP_INVOICE_UTILITY_TEMPLATE.md` → Production checklist.
 
